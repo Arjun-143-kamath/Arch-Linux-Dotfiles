@@ -1,0 +1,3 @@
+app.zen_browser.zen
+com.github.wwmm.easyeffects
+md.obsidian.Obsidian

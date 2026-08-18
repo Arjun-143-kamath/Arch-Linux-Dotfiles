@@ -1,0 +1,321 @@
+/* =====================================================
+   WALLTHEME
+   Dynamic colors generated from current wallpaper.
+
+   DO NOT EDIT THE COLOR VALUES HERE.
+
+   Generated theme:
+   ~/.config/walltheme/generated/waybar.css
+===================================================== */
+
+@import url("../walltheme/generated/waybar.css");
+
+
+/* =====================================================
+   GLOBAL
+===================================================== */
+
+* {
+    min-height: 0;
+    min-width: 0;
+
+    font-family: "JetBrainsMono";
+    font-size: 12px;
+    font-weight: 900;
+
+    padding: 2px;
+    padding-bottom: 3px;
+}
+
+
+/* =====================================================
+   BAR CONTAINER
+===================================================== */
+
+window#waybar {
+    background: transparent;
+
+    margin: 2px;
+    padding: 10px 12px;
+}
+
+.modules-left,
+.modules-center,
+.modules-right {
+    margin: 0;
+    padding: 0;
+}
+
+
+/* =====================================================
+   WORKSPACES
+===================================================== */
+
+#workspaces {
+    margin-right: 10px;
+}
+
+#workspaces button {
+    background: @surface;
+
+    color: @foreground;
+
+    padding: 5px 13px;
+    margin: 0 4px;
+
+    border-radius: 8px;
+
+    border: 1px solid alpha(@border, 0.85);
+
+    transition: all 130ms ease;
+}
+
+#workspaces button:hover {
+    color: @white;
+
+    background: @surface_alt;
+
+    border-color: alpha(@accent, 0.90);
+
+    padding: 5px 13px;
+    margin: 0 4px;
+}
+
+#workspaces button.active {
+    color: @white;
+
+    background: @accent_surface;
+
+    border: 1px solid @accent_surface;
+
+    padding: 5px 13px;
+    margin: 0 4px;
+}
+
+
+/* =====================================================
+   MODULE BASE STYLE
+===================================================== */
+
+#custom-clock,
+#pulseaudio,
+#custom-power,
+#custom-notification,
+#cpu,
+#memory,
+#battery,
+#mpris,
+#network,
+#bluetooth {
+
+    background: @surface;
+
+    padding: 5px 13px;
+    margin: 0 5px;
+
+    border-radius: 10px;
+
+    border: 1px solid alpha(@border, 0.75);
+
+    color: @foreground;
+
+    transition: all 140ms ease;
+}
+
+
+/* =====================================================
+   GROUP 1 — CPU MEMORY BATTERY
+===================================================== */
+
+#cpu {
+    margin-right: 0;
+
+    border-radius: 10px 0 0 10px;
+
+    border-right: 0;
+}
+
+#memory {
+    margin: 0;
+
+    border-radius: 0;
+
+    border-left: 0;
+    border-right: 0;
+}
+
+#battery {
+    margin-left: 0;
+
+    border-radius: 0 10px 10px 0;
+
+    border-left: 0;
+}
+
+
+/* =====================================================
+   GROUP 2 — WIFI BLUETOOTH NOTIFICATIONS
+===================================================== */
+
+#network,
+#bluetooth,
+#custom-notification {
+    padding: 10px 16px;
+
+    font-size: 14px;
+}
+
+#network {
+    margin-right: 0;
+
+    border-radius: 10px 0 0 10px;
+
+    border-right: 0;
+}
+
+#bluetooth {
+    margin: 0;
+
+    border-radius: 0;
+
+    border-left: 0;
+    border-right: 0;
+}
+
+#custom-notification {
+    margin-left: 0;
+
+    border-radius: 0 10px 10px 0;
+
+    border-left: 0;
+}
+
+
+/* =====================================================
+   MODULE ACCENT COLORS
+===================================================== */
+
+/* CPU — primary wallpaper accent */
+#cpu {
+    color: @accent;
+}
+
+/* Memory — intentionally muted */
+#memory {
+    color: @muted;
+}
+
+/* WiFi — secondary bright accent */
+#network {
+    color: @accent_secondary;
+}
+
+/* Bluetooth — secondary bright accent */
+#bluetooth {
+    color: @accent_secondary;
+}
+
+/* Music — tertiary accent */
+#mpris {
+    color: @accent_tertiary;
+}
+
+/* Volume — ALWAYS highly readable */
+#pulseaudio {
+    color: @foreground;
+}
+
+/* Clock — ALWAYS highly readable */
+#custom-clock {
+    color: @foreground;
+}
+
+/* Power — primary accent */
+#custom-power {
+    color: @accent;
+}
+
+
+/* =====================================================
+   MODULE HOVER
+===================================================== */
+
+#cpu:hover,
+#network:hover,
+#bluetooth:hover,
+#custom-power:hover {
+    color: @accent_hover;
+}
+
+#pulseaudio:hover {
+    color: @accent;
+}
+
+#custom-clock:hover {
+    color: @accent_hover;
+}
+
+
+/* =====================================================
+   BATTERY STATES
+===================================================== */
+
+#battery {
+    color: @success;
+}
+
+#battery.warning {
+    color: @warning;
+}
+
+#battery.critical {
+    color: @error;
+}
+
+
+/* =====================================================
+   WINDOW TITLE
+===================================================== */
+
+#window {
+    background: @surface;
+
+    padding: 5px 16px;
+    margin: 0 5px;
+
+    border-radius: 10px;
+
+    border: 1px solid alpha(@border, 0.75);
+
+    color: @accent_hover;
+
+    font-weight: 500;
+
+    transition: all 140ms ease;
+}
+
+window#waybar.empty #window {
+    background: transparent;
+
+    border: none;
+
+    padding: 0;
+    margin: 0;
+}
+
+
+/* =====================================================
+   TOOLTIP
+===================================================== */
+
+tooltip {
+    background: @background;
+
+    color: @foreground;
+
+    border-radius: 8px;
+
+    border: 1px solid alpha(@border, 0.75);
+
+    padding: 8px 10px;
+}

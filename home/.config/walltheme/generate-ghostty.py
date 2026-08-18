@@ -1,0 +1,396 @@
+#!/usr/bin/env python3
+
+from pathlib import Path
+import json
+import colorsys
+
+
+# =========================================================
+# CONFIGURATION
+# =========================================================
+
+BASE = Path.home() / ".config" / "walltheme"
+
+THEME_FILE = BASE / "current.json"
+
+OUTPUT = (
+    BASE /
+    "generated" /
+    "ghostty.conf"
+)
+
+
+# =========================================================
+# COLOR UTILITIES
+# =========================================================
+
+def hex_to_rgb(value):
+
+    value = value.lstrip("#")
+
+    return tuple(
+        int(value[i:i + 2], 16)
+        for i in (0, 2, 4)
+    )
+
+
+def rgb_to_hex(rgb):
+
+    return "#{:02x}{:02x}{:02x}".format(
+        *rgb
+    )
+
+
+def rgb_to_hsv(rgb):
+
+    r, g, b = [
+        value / 255
+        for value in rgb
+    ]
+
+    return colorsys.rgb_to_hsv(
+        r,
+        g,
+        b
+    )
+
+
+def hsv_to_rgb(h, s, v):
+
+    r, g, b = colorsys.hsv_to_rgb(
+        h,
+        s,
+        v
+    )
+
+    return (
+        round(r * 255),
+        round(g * 255),
+        round(b * 255)
+    )
+
+
+def lighten(rgb, amount):
+
+    h, s, v = rgb_to_hsv(rgb)
+
+    v = min(
+        1.0,
+        v + amount
+    )
+
+    return hsv_to_rgb(
+        h,
+        s,
+        v
+    )
+
+
+def darken(rgb, amount):
+
+    h, s, v = rgb_to_hsv(rgb)
+
+    v = max(
+        0.0,
+        v - amount
+    )
+
+    return hsv_to_rgb(
+        h,
+        s,
+        v
+    )
+
+
+def shift_hue(rgb, amount):
+
+    h, s, v = rgb_to_hsv(rgb)
+
+    h = (
+        h + amount
+    ) % 1.0
+
+    return hsv_to_rgb(
+        h,
+        s,
+        v
+    )
+
+
+def mix(c1, c2, amount):
+
+    return tuple(
+        round(
+            c1[i] * (1 - amount) +
+            c2[i] * amount
+        )
+        for i in range(3)
+    )
+
+
+# =========================================================
+# LOAD WALLTHEME
+# =========================================================
+
+with open(THEME_FILE) as file:
+
+    theme = json.load(file)
+
+
+# =========================================================
+# CORE COLORS
+# =========================================================
+
+background = hex_to_rgb(
+    theme["background"]
+)
+
+surface = hex_to_rgb(
+    theme["surface"]
+)
+
+surface_alt = hex_to_rgb(
+    theme["surface_alt"]
+)
+
+foreground = hex_to_rgb(
+    theme["foreground"]
+)
+
+muted = hex_to_rgb(
+    theme["muted"]
+)
+
+accent = hex_to_rgb(
+    theme["accent"]
+)
+
+accent_hover = hex_to_rgb(
+    theme["accent_hover"]
+)
+
+accent_secondary = hex_to_rgb(
+    theme["accent_secondary"]
+)
+
+accent_tertiary = hex_to_rgb(
+    theme["accent_tertiary"]
+)
+
+accent_surface = hex_to_rgb(
+    theme["accent_surface"]
+)
+
+warning = hex_to_rgb(
+    theme["warning"]
+)
+
+error = hex_to_rgb(
+    theme["error"]
+)
+
+success = hex_to_rgb(
+    theme["success"]
+)
+
+
+# =========================================================
+# TERMINAL COLORS
+#
+# ANSI colors are derived from the semantic Walltheme
+# colors instead of directly copying wallpaper colors.
+# =========================================================
+
+# ---------------------------------------------------------
+# NORMAL
+# ---------------------------------------------------------
+
+ansi_0 = background
+
+ansi_1 = error
+
+ansi_2 = success
+
+ansi_3 = warning
+
+ansi_4 = accent_secondary
+
+ansi_5 = accent_tertiary
+
+ansi_6 = accent
+
+ansi_7 = foreground
+
+
+# ---------------------------------------------------------
+# BRIGHT
+# ---------------------------------------------------------
+
+ansi_8 = mix(
+    surface,
+    muted,
+    0.55
+)
+
+ansi_9 = lighten(
+    error,
+    0.12
+)
+
+ansi_10 = lighten(
+    success,
+    0.12
+)
+
+ansi_11 = lighten(
+    warning,
+    0.10
+)
+
+ansi_12 = lighten(
+    accent_secondary,
+    0.12
+)
+
+ansi_13 = lighten(
+    accent_tertiary,
+    0.12
+)
+
+ansi_14 = lighten(
+    accent,
+    0.12
+)
+
+ansi_15 = foreground
+
+
+# =========================================================
+# CURSOR
+#
+# The cursor should stand out strongly against the
+# terminal background.
+# =========================================================
+
+cursor = accent_hover
+
+
+# =========================================================
+# CURSOR TEXT
+# =========================================================
+
+cursor_text = background
+
+
+# =========================================================
+# SELECTION
+#
+# Use the wallpaper-derived surface accent but keep
+# selection text highly readable.
+# =========================================================
+
+selection_background = accent_surface
+
+selection_foreground = foreground
+
+
+# =========================================================
+# SPLIT DIVIDER
+# =========================================================
+
+split_divider = accent_surface
+
+
+# =========================================================
+# WRITE GHOSTTY THEME
+# =========================================================
+
+config = f"""# =====================================================
+# WALLTHEME — GENERATED GHOSTTY THEME
+#
+# DO NOT EDIT THIS FILE.
+#
+# Source wallpaper:
+# {theme["wallpaper"]}
+# =====================================================
+
+
+# =====================================================
+# CORE
+# =====================================================
+
+background = {rgb_to_hex(background)}
+
+foreground = {rgb_to_hex(foreground)}
+
+
+# =====================================================
+# CURSOR
+# =====================================================
+
+cursor-color = {rgb_to_hex(cursor)}
+
+cursor-text = {rgb_to_hex(cursor_text)}
+
+
+# =====================================================
+# SELECTION
+# =====================================================
+
+selection-background = {rgb_to_hex(selection_background)}
+
+selection-foreground = {rgb_to_hex(selection_foreground)}
+
+
+# =====================================================
+# SPLIT DIVIDER
+# =====================================================
+
+split-divider-color = {rgb_to_hex(split_divider)}
+
+
+# =====================================================
+# ANSI PALETTE — NORMAL
+# =====================================================
+
+palette = 0={rgb_to_hex(ansi_0)}
+palette = 1={rgb_to_hex(ansi_1)}
+palette = 2={rgb_to_hex(ansi_2)}
+palette = 3={rgb_to_hex(ansi_3)}
+palette = 4={rgb_to_hex(ansi_4)}
+palette = 5={rgb_to_hex(ansi_5)}
+palette = 6={rgb_to_hex(ansi_6)}
+palette = 7={rgb_to_hex(ansi_7)}
+
+
+# =====================================================
+# ANSI PALETTE — BRIGHT
+# =====================================================
+
+palette = 8={rgb_to_hex(ansi_8)}
+palette = 9={rgb_to_hex(ansi_9)}
+palette = 10={rgb_to_hex(ansi_10)}
+palette = 11={rgb_to_hex(ansi_11)}
+palette = 12={rgb_to_hex(ansi_12)}
+palette = 13={rgb_to_hex(ansi_13)}
+palette = 14={rgb_to_hex(ansi_14)}
+palette = 15={rgb_to_hex(ansi_15)}
+"""
+
+
+# =========================================================
+# WRITE FILE
+# =========================================================
+
+OUTPUT.parent.mkdir(
+    parents=True,
+    exist_ok=True
+)
+
+OUTPUT.write_text(
+    config
+)
+
+print(
+    f"Generated → {OUTPUT}"
+)

@@ -1,0 +1,2 @@
+# No user-installed global npm packages.
+# npm and its dependencies are provided by the pacman package list.

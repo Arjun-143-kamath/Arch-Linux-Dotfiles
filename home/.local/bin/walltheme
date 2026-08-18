@@ -1,0 +1,144 @@
+#!/bin/bash
+
+set -e
+
+WALLTHEME="$HOME/.config/walltheme"
+WALLPAPER="$1"
+
+# =========================================================
+# VALIDATE INPUT
+# =========================================================
+
+if [ -z "$WALLPAPER" ]; then
+  echo "Usage: walltheme <wallpaper>"
+  exit 1
+fi
+
+WALLPAPER="${WALLPAPER/#\~/$HOME}"
+
+if [ ! -f "$WALLPAPER" ]; then
+  echo "Wallpaper not found:"
+  echo "  $WALLPAPER"
+  exit 1
+fi
+
+# =========================================================
+# HEADER
+# =========================================================
+
+echo "=========================================="
+echo " Walltheme"
+echo "=========================================="
+echo
+echo "Wallpaper:"
+echo "  $WALLPAPER"
+echo
+
+# =========================================================
+# 1. EXTRACT PALETTE
+# =========================================================
+
+echo "[1/7] Extracting colors..."
+
+python \
+  "$WALLTHEME/walltheme.py" \
+  "$WALLPAPER"
+
+# =========================================================
+# 2. GENERATE WAYBAR
+# =========================================================
+
+echo
+echo "[2/7] Generating Waybar theme..."
+
+python \
+  "$WALLTHEME/generate-waybar.py"
+
+# =========================================================
+# 3. GENERATE GHOSTTY
+# =========================================================
+
+echo
+echo "[3/7] Generating Ghostty theme..."
+
+python \
+  "$WALLTHEME/generate-ghostty.py"
+
+# =========================================================
+# 4. GENERATE HYPRLOCK
+# =========================================================
+
+echo
+echo "[4/7] Generating Hyprlock theme..."
+
+python \
+  "$WALLTHEME/generate-hyprlock.py"
+
+# =========================================================
+# 5. RELOAD HYPRLAND
+# =========================================================
+
+echo
+echo "[5/7] Reloading Hyprland..."
+
+if command -v hyprctl >/dev/null 2>&1; then
+  hyprctl reload
+fi
+
+# =========================================================
+# 6. RELOAD GHOSTTY
+#
+# Ghostty uses SIGUSR2 on Linux to reload its config.
+# Reload ALL running Ghostty processes.
+# =========================================================
+
+echo
+echo "[6/7] Reloading Ghostty..."
+
+GHOSTTY_PIDS=$(pgrep -x ghostty 2>/dev/null || true)
+
+if [ -n "$GHOSTTY_PIDS" ]; then
+
+  while read -r PID; do
+
+    if [ -n "$PID" ]; then
+
+      kill -USR2 "$PID" 2>/dev/null || true
+
+      echo \
+        "Reload signal sent → Ghostty PID $PID"
+
+    fi
+
+  done <<<"$GHOSTTY_PIDS"
+
+  echo "Ghostty configuration reloaded."
+
+else
+
+  echo "No running Ghostty instance found."
+  echo "New Ghostty windows will use the generated theme."
+
+fi
+
+# =========================================================
+# 7. RELOAD WAYBAR
+# =========================================================
+
+echo
+echo "[7/7] Reloading Waybar..."
+
+if pgrep -x waybar >/dev/null 2>&1; then
+  pkill waybar
+fi
+
+waybar >/dev/null 2>&1 &
+
+# =========================================================
+# DONE
+# =========================================================
+
+echo
+echo "=========================================="
+echo " Theme applied successfully"
+echo "=========================================="

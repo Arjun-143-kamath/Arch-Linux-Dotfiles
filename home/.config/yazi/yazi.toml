@@ -1,0 +1,13 @@
+[opener]
+image = [
+    { run = 'viewnior "$@"', orphan = true, for = "unix" },
+]
+
+pdf = [
+    { run = 'mupdf "$@"', orphan = true, for = "unix" },
+]
+
+[open]
+rules = [
+    { mime = "application/pdf", use = "pdf" },
+]

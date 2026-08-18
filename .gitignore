@@ -1,0 +1,72 @@
+# ============================================================
+# Secrets / credentials
+# ============================================================
+
+.env
+.env.*
+*.pem
+*.key
+*secret*
+*credentials*
+*password*
+*token*
+
+# Explicit secret-bearing files
+home/.config/gh/hosts.yml
+home/.config/mov-cli/.env
+home/.config/ytm-player/auth.json
+home/.config/heroic/gog_store/auth.json
+home/.config/go/telemetry/
+
+# ============================================================
+# Runtime / generated state
+# ============================================================
+
+home/.config/walltheme/current.json
+home/.config/walltheme/generated/
+
+home/.local/state/
+home/.local/share/
+
+# Wallpaper state
+.wall_state
+.wall_state.*
+
+# ============================================================
+# Application state
+# ============================================================
+
+**/Cookies
+**/Cookies-journal
+**/*Trust Tokens*
+**/Network Persistent State
+**/SharedStorage
+**/history.sqlite
+**/state.sqlite
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# ============================================================
+# Editor / tool state
+# ============================================================
+
+*.log
+*.tmp
+*.bak
+*.backup
+*.swp
+*.swo
+
+# Neovim generated state
+home/.local/state/nvim/
+
+# ============================================================
+# OS / desktop generated files
+# ============================================================
+
+.DS_Store
+Thumbs.db
+
+# Application databases / state
+home/.config/kew/library.dat

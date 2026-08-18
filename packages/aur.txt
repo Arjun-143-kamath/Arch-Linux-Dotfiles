@@ -1,0 +1,5 @@
+googledot-cursor-theme
+gpk-bin
+hyprsession
+wlogout
+yay
