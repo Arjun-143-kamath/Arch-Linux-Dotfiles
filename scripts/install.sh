@@ -127,6 +127,91 @@ deploy_dotfiles() {
 }
 
 # ============================================================
+# MACHINE-SPECIFIC CONFIGURATION
+# ============================================================
+
+deploy_machine_config() {
+  info "Deploying machine-specific configuration"
+
+  local machine_root="$REPO_DIR/machines"
+
+  if [[ ! -d "$machine_root" ]]; then
+    echo "No machine-specific configuration directory found."
+    return
+  fi
+
+  local hostname
+  hostname="$(cat /etc/hostname 2>/dev/null || true)"
+  hostname="${hostname//$'\n'/}"
+
+  if [[ -z "$hostname" ]]; then
+    warn "Could not determine hostname."
+    return
+  fi
+
+  local machine_dir="$machine_root/$hostname"
+
+  if [[ ! -d "$machine_dir" ]]; then
+    echo "No configuration for hostname: $hostname"
+    return
+  fi
+
+  echo "Machine: $hostname"
+
+  local target_root="$HOME/.config/hypr/machines/$hostname"
+  local backup_root="$HOME/.dotfiles-backups/$(date +%Y%m%d-%H%M%S)/machine-$hostname"
+
+  while IFS= read -r -d '' source; do
+    local relative="${source#"$machine_dir"/}"
+    local target="$target_root/$relative"
+
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "  [DRY-RUN] Would create parent: $(dirname "$target")"
+    else
+      mkdir -p "$(dirname "$target")"
+    fi
+
+    # Already linked correctly
+    if [[ -L "$target" ]] && [[ "$(readlink "$target")" == "$source" ]]; then
+      echo "  ✓ machines/$hostname/$relative"
+      continue
+    fi
+
+    # Existing file/symlink
+    if [[ -e "$target" || -L "$target" ]]; then
+      local backup="$backup_root/$relative"
+
+      if [[ "$DRY_RUN" == true ]]; then
+        echo "  [DRY-RUN] Would backup: machines/$hostname/$relative"
+      else
+        mkdir -p "$(dirname "$backup")"
+        echo "  → Backing up: machines/$hostname/$relative"
+        mv "$target" "$backup"
+      fi
+    fi
+
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "  [DRY-RUN] Would link: machines/$hostname/$relative"
+    else
+      ln -s "$source" "$target"
+      echo "  + Linked: machines/$hostname/$relative"
+    fi
+
+  done < <(
+    find "$machine_dir" -type f -print0
+  )
+
+  echo
+  echo "Machine-specific configuration deployed."
+
+  if [[ "$DRY_RUN" == false && -d "$backup_root" ]]; then
+    echo
+    echo "Existing machines configuration was backed up to:"
+    echo "  $backup_root"
+  fi
+}
+
+# ============================================================
 # SYSTEM FILE DEPLOYMENT
 # ============================================================
 
@@ -505,6 +590,7 @@ fi
 # ============================================================
 
 deploy_dotfiles
+deploy_machine_config
 
 # ============================================================
 # SYSTEM CONFIGURATION

@@ -30,7 +30,6 @@ grub
 hypridle
 hyprland
 hyprlock
-hyprpaper
 imagemagick
 impala
 inkscape
