@@ -1,0 +1,47 @@
+#!/bin/bash
+
+set -e
+
+PIXIE_LINK="/usr/share/sddm/themes/pixie/assets/current-wallpaper.png"
+
+# SDDM runs this script as root, so $USER is not the
+# desktop user. Determine the actual graphical user.
+DESKTOP_USER="$(loginctl list-users --no-legend 2>/dev/null | awk '$2 != "root" {print $2; exit}')"
+
+if [[ -z "$DESKTOP_USER" ]]; then
+    echo "SDDM wallpaper: could not determine desktop user"
+    exit 1
+fi
+
+WALL_DIR="/home/$DESKTOP_USER/Wall"
+STATE_FILE="/home/$DESKTOP_USER/.local/state/walltheme/.wall_state"
+
+# Make sure the state directory exists
+mkdir -p "$(dirname "$STATE_FILE")"
+
+# Make sure the state file exists
+if [[ ! -f "$STATE_FILE" ]]; then
+    echo 1 > "$STATE_FILE"
+fi
+
+# Read the current wallpaper number
+current=$(cat "$STATE_FILE")
+
+# Validate the state
+if ! [[ "$current" =~ ^[0-9]+$ ]] || [[ "$current" -lt 1 ]]; then
+    current=1
+    echo "$current" > "$STATE_FILE"
+fi
+
+WALL="$WALL_DIR/Wall${current}.png"
+
+# Make sure the wallpaper exists
+if [[ ! -f "$WALL" ]]; then
+    echo "SDDM wallpaper: $WALL does not exist"
+    exit 1
+fi
+
+# Point Pixie at the current wallpaper
+ln -sfn "$WALL" "$PIXIE_LINK"
+
+echo "SDDM wallpaper: Wall${current}.png"
