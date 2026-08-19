@@ -1,84 +1,109 @@
 #!/bin/bash
 
-WALL_DIR="$HOME/Wall"
-STATE_FILE="$HOME/.local/state/walltheme/.wall_state"
-WALLTHEME="$HOME/.local/bin/walltheme"
+set -e
+
+CONFIG="$HOME/.config/walltheme/config"
+
+if [ ! -f "$CONFIG" ]; then
+    echo "Walltheme configuration not found:"
+    echo "  $CONFIG"
+    exit 1
+fi
+
+source "$CONFIG"
+
+WALLPAPER_DIR="${WALLPAPER_DIR/#\~/$HOME}"
+CURRENT_WALLPAPER_LINK="${CURRENT_WALLPAPER_LINK/#\~/$HOME}"
+STATE_FILE="${STATE_FILE/#\~/$HOME}"
+
+mkdir -p "$(dirname "$STATE_FILE")"
+mkdir -p "$(dirname "$CURRENT_WALLPAPER_LINK")"
 
 # =========================================================
-# COUNT WALLPAPERS
+# BUILD WALLPAPER LIST
 # =========================================================
 
-MAX_WALL=$(find "$WALL_DIR" \
-  -maxdepth 1 \
-  -type f \
-  -name "Wall*.png" |
-  wc -l)
+mapfile -d '' WALLPAPERS < <(
+    find "$WALLPAPER_DIR" \
+        -maxdepth 1 \
+        -type f \
+        \( \
+            -iname "*.png" \
+            -o -iname "*.jpg" \
+            -o -iname "*.jpeg" \
+            -o -iname "*.webp" \
+            -o -iname "*.avif" \
+        \) \
+        -print0 |
+        sort -zV
+)
 
 # =========================================================
 # MAKE SURE WALLPAPERS EXIST
 # =========================================================
 
-if [ "$MAX_WALL" -eq 0 ]; then
-  echo "No wallpapers found in:"
-  echo "  $WALL_DIR"
-  exit 1
+if [ "${#WALLPAPERS[@]}" -eq 0 ]; then
+    echo "No wallpapers found in:"
+    echo "  $WALLPAPER_DIR"
+    exit 1
 fi
 
 # =========================================================
-# INITIALIZE STATE
+# READ CURRENT WALLPAPER
 # =========================================================
 
-if [ ! -f "$STATE_FILE" ]; then
-  echo 0 >"$STATE_FILE"
+current=""
+
+if [ -f "$STATE_FILE" ]; then
+    current="$(cat "$STATE_FILE")"
 fi
 
-current=$(cat "$STATE_FILE")
-
 # =========================================================
-# VALIDATE STATE
+# FIND CURRENT WALLPAPER INDEX
 # =========================================================
 
-if ! [[ "$current" =~ ^[0-9]+$ ]]; then
-  current=0
-fi
+current_index=-1
+
+for i in "${!WALLPAPERS[@]}"; do
+    if [ "${WALLPAPERS[$i]}" = "$current" ]; then
+        current_index="$i"
+        break
+    fi
+done
 
 # =========================================================
 # CALCULATE NEXT WALLPAPER
 # =========================================================
 
-next=$((current + 1))
+if [ "$current_index" -lt 0 ]; then
+    next_index=0
+else
+    next_index=$((current_index + 1))
 
-if [ "$next" -gt "$MAX_WALL" ]; then
-  next=1
+    if [ "$next_index" -ge "${#WALLPAPERS[@]}" ]; then
+        next_index=0
+    fi
 fi
+
+WALL="${WALLPAPERS[$next_index]}"
 
 # =========================================================
 # SAVE STATE
 # =========================================================
 
-echo "$next" >"$STATE_FILE"
+printf '%s\n' "$WALL" > "$STATE_FILE"
 
 # =========================================================
-# SELECT WALLPAPER
+# KEEP HYPRLOCK SYNCHRONIZED
 # =========================================================
 
-WALL="$WALL_DIR/Wall${next}.png"
-
-if [ ! -f "$WALL" ]; then
-  echo "Wallpaper not found:"
-  echo "  $WALL"
-
-  exit 1
-fi
+ln -sfn "$WALL" "$CURRENT_WALLPAPER_LINK"
 
 # =========================================================
-# Keep Hyprlock synchronized with the active wallpaper
-ln -sfn "$WALL" "$HOME/Wall/hyprlock-wallpaper.png"
-
 # CHANGE WALLPAPER
 # =========================================================
 
-pkill swaybg 2>/dev/null
+pkill swaybg 2>/dev/null || true
 
 swaybg -i "$WALL" -m fill &
 
@@ -86,18 +111,15 @@ swaybg -i "$WALL" -m fill &
 # APPLY WALLTHEME
 # =========================================================
 
-if [ -x "$WALLTHEME" ]; then
+WALLTHEME="$HOME/.local/bin/walltheme"
 
-  "$WALLTHEME" "$WALL"
-
-else
-
-  echo "Walltheme not found:"
-  echo "  $WALLTHEME"
-
-  exit 1
-
+if [ ! -x "$WALLTHEME" ]; then
+    echo "Walltheme executable not found:"
+    echo "  $WALLTHEME"
+    exit 1
 fi
+
+"$WALLTHEME" "$WALL"
 
 # =========================================================
 # OUTPUT

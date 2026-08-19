@@ -1,26 +1,60 @@
 #!/bin/bash
 
-WALL_DIR="$HOME/Wall"
-STATE_FILE="$HOME/.local/state/walltheme/.wall_state"
-# Read current wallpaper number
-current=$(cat "$STATE_FILE" 2>/dev/null)
+set -e
 
-# Validate state
-if ! [[ "$current" =~ ^[0-9]+$ ]] || [ "$current" -lt 1 ]; then
-  echo "Invalid wallpaper state: $current"
-  exit 1
+CONFIG="$HOME/.config/walltheme/config"
+
+if [ ! -f "$CONFIG" ]; then
+    echo "Walltheme configuration not found:"
+    echo "  $CONFIG"
+    exit 1
 fi
 
-WALL="$WALL_DIR/Wall${current}.png"
+source "$CONFIG"
 
-# Make sure wallpaper exists
-if [ ! -f "$WALL" ]; then
-  echo "Wallpaper not found: $WALL"
-  exit 1
+CURRENT_WALLPAPER_LINK="${CURRENT_WALLPAPER_LINK/#\~/$HOME}"
+STATE_FILE="${STATE_FILE/#\~/$HOME}"
+
+mkdir -p "$(dirname "$CURRENT_WALLPAPER_LINK")"
+
+# =========================================================
+# READ CURRENT WALLPAPER
+# =========================================================
+
+WALL=""
+
+if [ -f "$STATE_FILE" ]; then
+    WALL="$(cat "$STATE_FILE")"
 fi
 
-# Update the symlink
-ln -sfn "$WALL" "$LINK"
+# =========================================================
+# VALIDATE
+# =========================================================
 
-# Start Hyprlock
+if [ -z "$WALL" ] || [ ! -f "$WALL" ]; then
+    echo "Current wallpaper is unavailable."
+
+    # Recover the wallpaper state.
+    "$HOME/.local/bin/set_current_wall.sh"
+
+    if [ -f "$STATE_FILE" ]; then
+        WALL="$(cat "$STATE_FILE")"
+    fi
+fi
+
+if [ -z "$WALL" ] || [ ! -f "$WALL" ]; then
+    echo "Could not determine current wallpaper."
+    exit 1
+fi
+
+# =========================================================
+# SYNCHRONIZE HYPRLOCK LINK
+# =========================================================
+
+ln -sfn "$WALL" "$CURRENT_WALLPAPER_LINK"
+
+# =========================================================
+# START HYPRLOCK
+# =========================================================
+
 exec hyprlock

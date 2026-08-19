@@ -1,0 +1,13 @@
+# Walltheme wallpaper configuration
+
+# Directory containing wallpapers.
+WALLPAPER_DIR="$HOME/Wall"
+
+# Stable symlink used by Hyprlock.
+CURRENT_WALLPAPER_LINK="$HOME/.config/walltheme/current-wallpaper"
+
+# State file containing the absolute path of the active wallpaper.
+STATE_FILE="$HOME/.local/state/walltheme/current_wallpaper"
+
+# Supported wallpaper extensions.
+WALLPAPER_EXTENSIONS="png jpg jpeg webp avif"

@@ -14,34 +14,70 @@ if [[ -z "$DESKTOP_USER" ]]; then
 fi
 
 WALL_DIR="/home/$DESKTOP_USER/Wall"
-STATE_FILE="/home/$DESKTOP_USER/.local/state/walltheme/.wall_state"
+STATE_FILE="/home/$DESKTOP_USER/.local/state/walltheme/current_wallpaper"
 
-# Make sure the state directory exists
+# =========================================================
+# MAKE SURE STATE DIRECTORY EXISTS
+# =========================================================
+
 mkdir -p "$(dirname "$STATE_FILE")"
 
-# Make sure the state file exists
-if [[ ! -f "$STATE_FILE" ]]; then
-    echo 1 > "$STATE_FILE"
+# =========================================================
+# READ CURRENT WALLPAPER
+# =========================================================
+
+WALL=""
+
+if [[ -f "$STATE_FILE" ]]; then
+    WALL="$(cat "$STATE_FILE")"
 fi
 
-# Read the current wallpaper number
-current=$(cat "$STATE_FILE")
+# =========================================================
+# VALIDATE CURRENT WALLPAPER
+# =========================================================
 
-# Validate the state
-if ! [[ "$current" =~ ^[0-9]+$ ]] || [[ "$current" -lt 1 ]]; then
-    current=1
-    echo "$current" > "$STATE_FILE"
+if [[ -z "$WALL" || ! -f "$WALL" ]]; then
+
+    echo "SDDM wallpaper: current wallpaper unavailable"
+
+    # Fall back to the first available wallpaper.
+    WALL="$(
+        find "$WALL_DIR" \
+            -maxdepth 1 \
+            -type f \
+            \( \
+                -iname "*.png" \
+                -o -iname "*.jpg" \
+                -o -iname "*.jpeg" \
+                -o -iname "*.webp" \
+                -o -iname "*.avif" \
+            \) \
+            -print0 2>/dev/null |
+        sort -zV |
+        xargs -0 -r -n1 printf '%s\n' |
+        head -n1
+    )"
 fi
 
-WALL="$WALL_DIR/Wall${current}.png"
+# =========================================================
+# MAKE SURE WALLPAPER EXISTS
+# =========================================================
 
-# Make sure the wallpaper exists
-if [[ ! -f "$WALL" ]]; then
-    echo "SDDM wallpaper: $WALL does not exist"
+if [[ -z "$WALL" || ! -f "$WALL" ]]; then
+    echo "SDDM wallpaper: no wallpapers found in $WALL_DIR"
     exit 1
 fi
 
-# Point Pixie at the current wallpaper
+# =========================================================
+# SAVE RECOVERED STATE
+# =========================================================
+
+printf '%s\n' "$WALL" > "$STATE_FILE"
+
+# =========================================================
+# POINT PIXIE AT CURRENT WALLPAPER
+# =========================================================
+
 ln -sfn "$WALL" "$PIXIE_LINK"
 
-echo "SDDM wallpaper: Wall${current}.png"
+echo "SDDM wallpaper: $(basename "$WALL")"
