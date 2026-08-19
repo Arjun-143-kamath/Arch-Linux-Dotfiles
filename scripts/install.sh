@@ -65,19 +65,29 @@ deploy_dotfiles() {
     local relative="${source#"$source_root"/}"
     local target="$HOME/$relative"
 
+    # ----------------------------------------------------
+    # Create target parent directory
+    # ----------------------------------------------------
+
     if [[ "$DRY_RUN" == true ]]; then
       echo "  [DRY-RUN] Would create parent: $(dirname "$target")"
     else
       mkdir -p "$(dirname "$target")"
     fi
 
+    # ----------------------------------------------------
     # Already linked correctly
+    # ----------------------------------------------------
+
     if [[ -L "$target" ]] && [[ "$(readlink "$target")" == "$source" ]]; then
       echo "  ✓ $relative"
       continue
     fi
 
+    # ----------------------------------------------------
     # Existing file/symlink: back it up
+    # ----------------------------------------------------
+
     if [[ -e "$target" || -L "$target" ]]; then
       local backup="$backup_root/$relative"
 
@@ -85,12 +95,16 @@ deploy_dotfiles() {
         echo "  [DRY-RUN] Would backup: $relative"
       else
         mkdir -p "$(dirname "$backup")"
+
         echo "  → Backing up: $relative"
         mv "$target" "$backup"
       fi
     fi
 
+    # ----------------------------------------------------
     # Create symlink
+    # ----------------------------------------------------
+
     if [[ "$DRY_RUN" == true ]]; then
       echo "  [DRY-RUN] Would link: $relative"
     else
@@ -110,6 +124,65 @@ deploy_dotfiles() {
     echo "Existing files were backed up to:"
     echo "  $backup_root"
   fi
+}
+
+# ============================================================
+# SYSTEM FILE DEPLOYMENT
+# ============================================================
+
+deploy_system_file() {
+  local source="$1"
+  local target="$2"
+  local mode="$3"
+  local backup_root="$4"
+
+  # --------------------------------------------------------
+  # Dry run
+  # --------------------------------------------------------
+
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "  [DRY-RUN] Would install:"
+    echo "             $source"
+    echo "          →  $target"
+    return
+  fi
+
+  # --------------------------------------------------------
+  # Create target parent directory
+  # --------------------------------------------------------
+
+  sudo mkdir -p "$(dirname "$target")"
+
+  # --------------------------------------------------------
+  # Existing file: compare and back up if different
+  # --------------------------------------------------------
+
+  if [[ -e "$target" || -L "$target" ]]; then
+
+    if cmp -s "$source" "$target" 2>/dev/null; then
+      echo "  ✓ $target"
+      return
+    fi
+
+    local relative="${target#/}"
+    local backup="$backup_root/$relative"
+
+    sudo mkdir -p "$(dirname "$backup")"
+
+    echo "  → Backing up: $target"
+    sudo cp -a "$target" "$backup"
+  fi
+
+  # --------------------------------------------------------
+  # Install system file
+  # --------------------------------------------------------
+
+  echo "  + Installing: $target"
+
+  sudo install \
+    -m "$mode" \
+    "$source" \
+    "$target"
 }
 
 # ============================================================
@@ -165,8 +238,9 @@ deploy_system() {
       "644" \
       "$backup_root"
   fi
+
   # --------------------------------------------------------
-  # SYSTEM SCRIPTS
+  # System scripts
   # --------------------------------------------------------
 
   if [[ -f "$SYSTEM_ROOT/usr/local/bin/sddm-wallpaper" ]]; then
@@ -185,42 +259,6 @@ deploy_system() {
     echo "Existing system files were backed up to:"
     echo "  $backup_root"
   fi
-}
-
-deploy_system_file() {
-  local source="$1"
-  local target="$2"
-  local mode="$3"
-  local backup_root="$4"
-
-  if [[ "$DRY_RUN" == true ]]; then
-    echo "  [DRY-RUN] Would install:"
-    echo "             $source"
-    echo "          →  $target"
-    return
-  fi
-
-  mkdir -p "$(dirname "$target")"
-
-  # Back up existing file if it differs
-  if [[ -e "$target" || -L "$target" ]]; then
-    if cmp -s "$source" "$target" 2>/dev/null; then
-      echo "  ✓ $target"
-      return
-    fi
-
-    local relative="${target#/}"
-    local backup="$backup_root/$relative"
-
-    mkdir -p "$(dirname "$backup")"
-
-    echo "  → Backing up: $target"
-    cp -a "$target" "$backup"
-  fi
-
-  echo "  + Installing: $target"
-
-  install -m "$mode" "$source" "$target"
 }
 
 # ============================================================
@@ -244,10 +282,13 @@ check_display_manager() {
   if [[ "$sddm_enabled" == true && "$greetd_enabled" == true ]]; then
     warn "Both SDDM and greetd are enabled."
     warn "Only one display manager should normally be enabled."
+
   elif [[ "$sddm_enabled" == true ]]; then
     echo "  ✓ SDDM is enabled."
+
   elif [[ "$greetd_enabled" == true ]]; then
     echo "  ✓ greetd is enabled."
+
   else
     warn "No supported display manager is enabled."
   fi
@@ -267,6 +308,9 @@ fi
 
 command -v pacman >/dev/null 2>&1 ||
   error "pacman is not available."
+
+command -v sudo >/dev/null 2>&1 ||
+  error "sudo is required."
 
 # ============================================================
 # DRY RUN HEADER
@@ -290,12 +334,14 @@ if [[ -f "$PACMAN_FILE" ]]; then
   )
 
   if ((${#PACMAN_PACKAGES[@]} > 0)); then
+
     if [[ "$DRY_RUN" == true ]]; then
       echo "DRY-RUN: Would install the following Pacman packages:"
       printf '  %s\n' "${PACMAN_PACKAGES[@]}"
     else
       sudo pacman -S --needed "${PACMAN_PACKAGES[@]}"
     fi
+
   fi
 
 else
@@ -313,6 +359,7 @@ if ! command -v yay >/dev/null 2>&1; then
   if [[ "$DRY_RUN" == true ]]; then
     echo "DRY-RUN: yay is not installed."
     echo "DRY-RUN: Would install yay from the AUR."
+
   else
     echo "yay is not installed."
     echo "Installing yay from the AUR..."
@@ -352,6 +399,7 @@ if [[ -f "$AUR_FILE" ]]; then
     if [[ "$DRY_RUN" == true ]]; then
       echo "DRY-RUN: Would install the following AUR packages:"
       printf '  %s\n' "${AUR_PACKAGES[@]}"
+
     else
       yay -S --needed "${AUR_PACKAGES[@]}"
     fi
@@ -377,8 +425,12 @@ if command -v flatpak >/dev/null 2>&1; then
         grep -vE '^[[:space:]]*(#|$)' "$FLATPAK_FILE"
       )
 
-      echo "DRY-RUN: Would install the following Flatpaks:"
-      printf '  %s\n' "${FLATPAKS[@]}"
+      if ((${#FLATPAKS[@]} > 0)); then
+        echo "DRY-RUN: Would install the following Flatpaks:"
+        printf '  %s\n' "${FLATPAKS[@]}"
+      fi
+    else
+      error "Missing package file: $FLATPAK_FILE"
     fi
 
   else
@@ -386,7 +438,8 @@ if command -v flatpak >/dev/null 2>&1; then
     if ! flatpak remotes --columns=name | grep -qx 'flathub'; then
       echo "Adding Flathub..."
 
-      flatpak remote-add --if-not-exists \
+      flatpak remote-add \
+        --if-not-exists \
         flathub \
         https://dl.flathub.org/repo/flathub.flatpakrepo
     fi
@@ -430,6 +483,7 @@ if command -v npm >/dev/null 2>&1; then
       if [[ "$DRY_RUN" == true ]]; then
         echo "DRY-RUN: Would install the following npm packages:"
         printf '  %s\n' "${NPM_PACKAGES[@]}"
+
       else
         npm install --global "${NPM_PACKAGES[@]}"
       fi
@@ -447,7 +501,7 @@ else
 fi
 
 # ============================================================
-# USER DOTFILES
+# DOTFILES
 # ============================================================
 
 deploy_dotfiles
@@ -459,7 +513,7 @@ deploy_dotfiles
 deploy_system
 
 # ============================================================
-# DISPLAY MANAGER
+# DISPLAY MANAGER STATUS
 # ============================================================
 
 check_display_manager
@@ -486,5 +540,5 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "DRY-RUN: No changes were made."
 else
   echo
-  echo "Packages, dotfiles, and system configuration are ready."
+  echo "Dotfiles and packages are ready."
 fi
