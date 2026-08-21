@@ -1,223 +1,240 @@
 # ark-dotfiles
 
-My personal Arch Linux + Hyprland dotfiles.
+> A modular Arch Linux + Hyprland desktop that adapts its appearance to the wallpaper and its configuration to the hardware.
 
-This repository contains the configuration, scripts, package lists, and system configuration used to build my current Wayland desktop environment.
+My personal Arch Linux + Hyprland dotfiles, built around reproducibility, modular configuration, dynamic theming, and machine-specific hardware configuration.
 
-The setup is centered around:
+## Highlights
 
-- Arch Linux
-- Hyprland
-- Waybar
-- Ghostty
+- Arch Linux + Hyprland Wayland desktop
+- Modular Lua-based Hyprland configuration
+- Machine-aware monitor configuration
+- Dynamic wallpaper-driven theming
+- Automatic theme generation for Hyprland, Waybar, Ghostty, and Hyprlock
+- Synchronized wallpaper state across the desktop, lock screen, and SDDM
+- swaybg wallpaper management
+- Ghostty terminal with live theme reloads
+- Waybar with generated dynamic colors
 - Neovim / LazyVim
-- Rofi
-- Yazi
-- Hyprlock
-- Hypridle
-- Hyprglass
-- Dynamic wallpaper-based theming
-- SDDM / greetd configuration
-- Kew
-- EasyEffects
-- CLI utilities and development tools
+- Rofi, Yazi, Thunar, btop, Cava, SwayNC, and EasyEffects
+- Separate pacman, AUR, Flatpak, and npm package manifests
+- Automated installation through `scripts/install.sh`
+- User and system configuration kept separate
+- Runtime state and generated files kept out of Git
 
 ---
 
-## Repository Structure
+## Architecture
+
+```text
+                    ark-dotfiles
+                         │
+          ┌──────────────┼──────────────┐
+          │              │              │
+        home/         machines/       system/
+          │              │              │
+     User config     Hardware config   System config
+          │              │              │
+          └──────────────┼──────────────┘
+                         │
+                  scripts/install.sh
+                         │
+                         ▼
+                 Reproducible system
+```
+
+### Repository structure
 
 ```text
 ark-dotfiles/
 ├── home/
 │   ├── .aliases
-│   ├── .bash_profile
 │   ├── .bashrc
-│   ├── .gitconfig
+│   ├── .bash_profile
 │   ├── .profile
-│   │
+│   ├── .gitconfig
 │   ├── .config/
+│   │   ├── hypr/
+│   │   ├── waybar/
+│   │   ├── ghostty/
+│   │   ├── walltheme/
+│   │   ├── nvim/
+│   │   ├── rofi/
+│   │   ├── yazi/
 │   │   ├── btop/
 │   │   ├── cava/
-│   │   ├── easyeffectsrc
-│   │   ├── environment.d/
-│   │   ├── fastfetch/
-│   │   ├── ghostty/
-│   │   ├── gtk-3.0/
-│   │   ├── gtk-4.0/
-│   │   ├── hypr/
 │   │   ├── kew/
-│   │   ├── lazygit/
-│   │   ├── mimeapps.list
-│   │   ├── nvim/
-│   │   ├── nwg-look/
-│   │   ├── rofi/
-│   │   ├── walltheme/
-│   │   ├── waybar/
-│   │   ├── wlogout/
-│   │   ├── xsettingsd/
-│   │   └── yazi/
-│   │
-│   └── .local/
-│       └── bin/
-│           ├── change_wall_on_key.sh
-│           ├── hyprlock-wallpaper.sh
-│           ├── killwaybar.sh
-│           ├── set_current_wall.sh
-│           ├── toggle_Waybar.sh
-│           ├── update.sh
-│           └── walltheme
+│   │   └── ...
+│   └── .local/bin/
 │
+├── machines/
+│   └── ark/
+│       └── monitors.lua
 ├── packages/
 │   ├── pacman.txt
 │   ├── aur.txt
 │   ├── flatpak.txt
 │   └── npm.txt
-│
 ├── system/
 │   ├── greetd/
-│   └── sddm/
-│
-├── .gitignore
+│   ├── sddm/
+│   └── usr/local/bin/
+├── scripts/
+│   └── install.sh
 └── README.md
 ```
 
 ---
 
-# Desktop
+# Hyprland
 
-## Hyprland
+Hyprland is the core compositor and window manager.
 
-Hyprland is the compositor and window manager at the center of the setup.
-
-The configuration is split into Lua modules:
+The configuration is split into Lua modules rather than keeping everything in one file:
 
 ```text
 ~/.config/hypr/
 ├── hyprland.lua
 ├── env.lua
+├── apps.lua
 ├── monitors.lua
 ├── appearance.lua
-├── apps.lua
 ├── keybinds.lua
 ├── hyprland-gui.lua
 ├── hyprglass.lua
 ├── walltheme.lua
 ├── hypridle.conf
-├── hyprlock.conf
-└── hyprpaper.conf
+└── hyprlock.conf
 ```
 
-The main configuration imports the individual modules rather than keeping everything in a single file.
+The main entry point imports these modules and handles session startup.
 
-### Autostart
+Autostart includes Hypridle, dynamic wallpaper/theme initialization, EasyEffects, cliphist, the Polkit agent, Thunar, Hyprsession, and Hyprglass.
 
-The Hyprland configuration starts several services and utilities automatically, including:
+---
 
-- `hypridle`
-- Waybar
-- Dynamic wallpaper/theme initialization
-- EasyEffects
-- `wl-paste` / `cliphist`
-- Polkit authentication agent
-- Thunar daemon
-- Hyprsession
-- Hyprglass
+# Machine-Specific Configuration
+
+Hardware-specific configuration is deliberately separated from the generic Hyprland configuration.
+
+The generic monitor loader reads the hostname and loads:
+
+```text
+~/.config/hypr/machines/<hostname>/monitors.lua
+```
+
+For example:
+
+```text
+machines/
+└── ark/
+    └── monitors.lua
+```
+
+This keeps monitor names, resolution, position, scale, and workspace assignments out of the portable Hyprland configuration.
+
+Adding another machine only requires another directory:
+
+```text
+machines/
+├── ark/
+│   └── monitors.lua
+├── laptop/
+│   └── monitors.lua
+└── desktop/
+    └── monitors.lua
+```
 
 ---
 
 # Dynamic Wallpaper Theming
 
-One of the main features of this setup is the dynamic theming system.
+The defining feature of this setup is its wallpaper-driven theme system.
 
-The wallpaper determines the color palette used throughout the desktop.
-
-```text
-Wallpaper
-    │
-    ▼
-walltheme.py
-    │
-    ▼
-current.json
-    │
-    ├──► Waybar CSS
-    ├──► Ghostty theme
-    ├──► Hyprlock config
-    └──► Hyprland colors
-```
-
-The main components are located at:
+A wallpaper is analyzed and converted into a palette which is propagated throughout the desktop.
 
 ```text
-~/.config/walltheme/
-├── walltheme.py
-├── config.toml
-├── generate-waybar.py
-├── generate-ghostty.py
-├── generate-hyprland.py
-└── generate-hyprlock.py
+                         Wallpaper
+                             │
+                             ▼
+                       walltheme.py
+                             │
+                             ▼
+                        current.json
+                             │
+          ┌──────────────────┼──────────────────┐
+          │                  │                  │
+          ▼                  ▼                  ▼
+       Hyprland           Waybar            Ghostty
+          │                  │                  │
+          └──────────────────┼──────────────────┘
+                             ▼
+                         Hyprlock
 ```
 
-The executable entry point is:
+The theme generator produces:
 
-```text
-~/.local/bin/walltheme
+- Hyprland colors
+- Waybar CSS
+- Ghostty configuration
+- Hyprlock configuration
+
+Use:
+
+```bash
+walltheme <wallpaper>
 ```
 
-Usage:
+For example:
 
 ```bash
 walltheme ~/Wall/Wall1.png
 ```
 
-This:
-
-1. Extracts colors from the wallpaper.
-2. Generates the theme palette.
-3. Generates Waybar colors.
-4. Generates the Ghostty theme.
-5. Generates the Hyprlock configuration.
-6. Reloads Hyprland.
-7. Reloads running Ghostty instances.
-8. Restarts Waybar.
-
-Generated runtime files are intentionally excluded from Git:
+Generated runtime files live under:
 
 ```text
 ~/.config/walltheme/current.json
 ~/.config/walltheme/generated/
 ```
 
+These are intentionally not tracked by Git.
+
 ---
 
-# Wallpaper System
-
-Wallpapers are expected to live in:
-
-```text
-~/Wall/
-```
-
-The current setup uses:
-
-```text
-Wall1.png
-Wall2.png
-...
-Wall14.png
-```
+# Wallpaper State
 
 Wallpaper state is stored separately from the dotfiles:
 
 ```text
-~/.local/state/walltheme/.wall_state
+~/.local/state/walltheme/current_wallpaper
 ```
 
-This keeps machine-specific runtime state out of Git.
+The state file contains the absolute path of the active wallpaper.
 
-## Change Wallpaper
+A stable symlink provides a single target for components that need the current image:
 
-The wallpaper switching script is:
+```text
+~/.config/walltheme/current-wallpaper
+```
+
+This means Hyprlock does not need a hard-coded wallpaper path.
+
+```text
+current_wallpaper
+       │
+       ▼
+current-wallpaper
+       │
+       ├──► Hyprlock
+       └──► Desktop wallpaper/theme system
+```
+
+---
+
+# Changing Wallpapers
+
+Wallpaper switching is handled by:
 
 ```bash
 ~/.local/bin/change_wall_on_key.sh
@@ -225,50 +242,69 @@ The wallpaper switching script is:
 
 It:
 
-1. Finds the available wallpapers.
-2. Determines the next wallpaper.
-3. Updates the wallpaper state.
-4. Starts `swaybg`.
-5. Updates the Hyprlock wallpaper symlink.
-6. Runs `walltheme`.
+1. Finds available wallpapers
+2. Determines the next wallpaper
+3. Updates persistent wallpaper state
+4. Updates the stable wallpaper symlink
+5. Restarts `swaybg`
+6. Runs `walltheme`
+7. Regenerates the desktop theme
+8. Reloads the relevant components
 
-The active Hyprlock wallpaper is represented by:
+Supported image formats include PNG, JPEG, WebP, and AVIF.
+
+---
+
+# Hyprlock Synchronization
+
+Hyprlock uses:
 
 ```text
-~/Wall/hyprlock-wallpaper.png
+~/.config/walltheme/current-wallpaper
 ```
 
-This is a symlink to the currently selected wallpaper.
+When the wallpaper changes, the symlink changes with it.
 
-That means Hyprlock does not contain a hard-coded wallpaper path.
+`hyprlock-wallpaper.sh` verifies the state and synchronizes the link before launching Hyprlock, preventing the lock screen from becoming stuck on an older wallpaper.
+
+---
+
+# SDDM Synchronization
+
+The SDDM wallpaper script is:
+
+```text
+system/usr/local/bin/sddm-wallpaper
+```
+
+It points the Pixie SDDM theme at the current wallpaper.
+
+The intended flow is:
+
+```text
+Current wallpaper
+       │
+       ├──► Hyprland / swaybg
+       ├──► Waybar theme
+       ├──► Ghostty theme
+       ├──► Hyprlock
+       └──► SDDM
+```
+
+This keeps the visual identity consistent across login, desktop, and lock screen.
 
 ---
 
 # Waybar
 
-Waybar is configured using:
+Waybar is configured through:
 
 ```text
 ~/.config/waybar/config.jsonc
 ~/.config/waybar/style.css
 ```
 
-The main stylesheet imports the generated wallpaper theme.
-
-Waybar includes modules for things such as:
-
-- Workspaces
-- Window title
-- Media controls
-- CPU
-- Memory
-- Battery
-- Network
-- Bluetooth
-- Audio
-- Notifications
-- Clock
-- Power
+Configured components include workspaces, window title, media controls, CPU, memory, battery, network, Bluetooth, audio, notifications, clock, and power controls.
 
 ---
 
@@ -276,50 +312,25 @@ Waybar includes modules for things such as:
 
 Ghostty is the primary terminal emulator.
 
-Configuration:
+Static configuration:
 
 ```text
 ~/.config/ghostty/config
 ```
 
-The generated wallpaper theme is loaded separately:
+Generated theme:
 
 ```text
 ~/.config/walltheme/generated/ghostty.conf
 ```
 
-The wallpaper theme system sends `SIGUSR2` to running Ghostty processes so the theme can update without manually restarting every terminal.
-
----
-
-# Shell
-
-The shell is Bash.
-
-Configuration:
-
-```text
-~/.bashrc
-~/.bash_profile
-~/.profile
-~/.aliases
-```
-
-Included utilities include:
-
-- `zoxide`
-- `yazi`
-- `fastfetch`
-
-The `yz` shell function opens Yazi and changes the current shell directory to the directory selected in Yazi.
+Running Ghostty instances receive a reload signal when the wallpaper changes, allowing the terminal theme to update without manually restarting terminals.
 
 ---
 
 # Neovim
 
-The Neovim configuration is based on LazyVim.
-
-Location:
+The editor configuration is based on LazyVim:
 
 ```text
 ~/.config/nvim/
@@ -335,13 +346,13 @@ lua/config/
 lua/plugins/
 ```
 
-Plugin state is represented by `lazy-lock.json` so the installed plugin versions can be reproduced.
+`lazy-lock.json` is tracked so plugin versions can be reproduced.
 
 ---
 
-# Package Lists
+# Package Management
 
-The repository separates packages by installation source.
+Packages are separated by installation source:
 
 ```text
 packages/
@@ -351,228 +362,100 @@ packages/
 └── npm.txt
 ```
 
-## Official Arch Packages
-
-```bash
-sudo pacman -S --needed - < packages/pacman.txt
-```
-
-## AUR Packages
-
-Using `yay`:
-
-```bash
-yay -S --needed - < packages/aur.txt
-```
-
-## Flatpak Applications
-
-```bash
-while read -r app; do
-    flatpak install -y flathub "$app"
-done < packages/flatpak.txt
-```
-
-## NPM Packages
-
-```bash
-npm install -g $(tr '\n' ' ' < packages/npm.txt)
-```
-
----
-
-# System Configuration
-
-System-level configuration is kept separately from user configuration.
-
-```text
-system/
-├── greetd/
-│   ├── config.toml
-│   └── regreet.toml
-│
-└── sddm/
-    ├── theme.conf
-    └── wallpaper.conf
-```
-
-These files should **not** be copied blindly over an existing system.
-
-Review them first and adapt paths, display-manager configuration, and permissions as necessary.
+The installer handles these automatically.
 
 ---
 
 # Installation
 
-## 1. Clone the Repository
+## 1. Clone
 
 ```bash
 git clone <YOUR-REPOSITORY-URL> ~/ark-dotfiles
 cd ~/ark-dotfiles
 ```
 
----
+## 2. Review
 
-## 2. Install Packages
+This is a personal configuration. Review package lists and system configuration before using it on another machine.
 
-Install official packages:
-
-```bash
-sudo pacman -S --needed - < packages/pacman.txt
-```
-
-Install AUR packages:
+## 3. Run the installer
 
 ```bash
-yay -S --needed - < packages/aur.txt
+./scripts/install.sh
 ```
 
-Install Flatpak applications:
+For a safe preview:
 
 ```bash
-while read -r app; do
-    flatpak install -y flathub "$app"
-done < packages/flatpak.txt
+./scripts/install.sh --dry-run
 ```
 
-Install NPM packages:
+The installer can:
 
-```bash
-npm install -g $(tr '\n' ' ' < packages/npm.txt)
-```
-
----
-
-## 3. Back Up Existing Configuration
-
-Before installing the dotfiles:
-
-```bash
-mkdir -p ~/dotfiles-backup
-
-cp -a ~/.config ~/dotfiles-backup/config
-cp -a ~/.local/bin ~/dotfiles-backup/bin 2>/dev/null || true
-cp -a ~/.bashrc ~/dotfiles-backup/ 2>/dev/null || true
-cp -a ~/.bash_profile ~/dotfiles-backup/ 2>/dev/null || true
-cp -a ~/.profile ~/dotfiles-backup/ 2>/dev/null || true
-```
+- Install official Arch packages
+- Install AUR packages through `yay`
+- Install Flatpak applications
+- Install global npm packages
+- Deploy user dotfiles
+- Deploy machine-specific configuration
+- Install system-level configuration
+- Configure display-manager files
+- Back up existing files before replacement
 
 ---
 
-# Installing the Dotfiles
+# Wallpaper Setup
 
-The repository mirrors the home directory structure.
-
-For example:
-
-```text
-repository:
-home/.config/hypr/hyprland.lua
-
-installed location:
-~/.config/hypr/hyprland.lua
-```
-
-A simple installation method is:
-
-```bash
-cp -a home/.config/. ~/.config/
-cp -a home/.local/. ~/.local/
-cp -a home/.[!.]* ~/
-```
-
-**Review this before running it on another machine.**
-
-For a fresh installation, a symlink-based setup may be preferable.
-
----
-
-# Dynamic Theme First Run
-
-After installing the configuration, make sure the wallpaper directory exists:
+Create the wallpaper directory:
 
 ```bash
 mkdir -p ~/Wall
 ```
 
-Copy wallpapers into it:
+Add wallpapers:
 
 ```text
 ~/Wall/
-├── Wall1.png
-├── Wall2.png
-├── ...
-└── Wall14.png
+├── wallpaper-01.png
+├── wallpaper-02.jpg
+├── wallpaper-03.webp
+└── ...
 ```
 
-Initialize the wallpaper state:
+Then initialize the theme:
 
 ```bash
-mkdir -p ~/.local/state/walltheme
-echo 1 > ~/.local/state/walltheme/.wall_state
+walltheme ~/Wall/wallpaper-01.png
 ```
 
-Then apply the theme:
-
-```bash
-walltheme ~/Wall/Wall1.png
-```
+Wallpaper state is created automatically by the wallpaper scripts.
 
 ---
 
-# Hyprlock
-
-Hyprlock's configuration is generated by the wallpaper theme system.
-
-The generated configuration uses:
-
-```text
-~/Wall/hyprlock-wallpaper.png
-```
-
-as the wallpaper source.
-
-The symlink should point to the currently active wallpaper:
-
-```bash
-ls -l ~/Wall/hyprlock-wallpaper.png
-```
-
-Changing wallpapers updates this symlink automatically.
-
----
-
-# Updating the System
+# Updating
 
 The repository includes:
 
-```text
+```bash
 ~/.local/bin/update.sh
 ```
 
-and the Bash alias:
+The shell alias:
 
 ```bash
 update
 ```
 
-The script updates:
-
-- Pacman packages
-- AUR packages
-- Flatpak applications
-
-Run:
-
-```bash
-update
-```
+updates the configured package sources.
 
 ---
 
 # Git Hygiene
 
-This repository intentionally does **not** track:
+This repository intentionally avoids tracking runtime and sensitive data.
+
+Do not commit:
 
 - API keys
 - Passwords
@@ -582,81 +465,51 @@ This repository intentionally does **not** track:
 - Authentication files
 - Browser state
 - Application databases
-- Wallpaper state
 - Generated theme files
+- Wallpaper state
 - Other machine-specific runtime state
 
-The `.gitignore` contains the relevant exclusions.
-
-Before pushing changes, it is recommended to check:
+Before committing:
 
 ```bash
 git diff --check
-```
-
-and:
-
-```bash
 git status
 ```
 
 For a quick credential-name check:
 
 ```bash
-git diff --cached --name-only | grep -Ei \
-'(\.env|secret|token|password|credential|auth\.json|hosts\.yml|\.pem|\.key)'
+git diff --cached --name-only | grep -Ei '(\.env|secret|token|password|credential|auth\.json|\.pem|\.key)'
 ```
 
 ---
 
-# Notes
+# Design Philosophy
 
-## Machine-specific configuration
+The goal is not to copy an entire home directory into Git.
 
-Some configuration may need adjustment when moving this setup to another machine.
-
-In particular:
-
-- Monitor names
-- Monitor resolutions
-- GPU-specific settings
-- Display-manager configuration
-- Wallpaper collection
-- Hardware-specific audio settings
-- Package availability
-- Application paths
-
-The configuration should therefore be treated as a **base environment**, not a completely hardware-independent installation script.
-
----
-
-# Philosophy
-
-The goal of this repository is to keep the important parts of the desktop reproducible while avoiding unnecessary runtime state.
-
-Tracked:
+Instead, the repository tracks the parts of the environment that are meaningful and reproducible:
 
 ```text
-Configuration
-Scripts
-Themes
-Package lists
-System configuration
-Neovim configuration
+Tracked
+├── Configuration
+├── Scripts
+├── Themes
+├── Package manifests
+├── System configuration
+├── Machine-specific configuration
+└── Editor configuration
+
+Not tracked
+├── Secrets
+├── Generated files
+├── Caches
+├── Application databases
+├── Wallpaper state
+└── Runtime state
 ```
 
-Not tracked:
-
-```text
-Secrets
-Generated files
-Caches
-Application databases
-Wallpaper state
-Machine-specific runtime state
-```
-
-The result is a portable Arch Linux desktop configuration that can be rebuilt without copying the entire home directory.
+The result is a modular desktop environment that can be rebuilt without carrying unnecessary machine state with it.
 
 ---
 
