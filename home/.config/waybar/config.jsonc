@@ -1,40 +1,31 @@
 {
-  "layer": "top",
+  "layer": "overlay",
   "position": "top",
   "height": 38,
   "spacing": 4,
-  "exclusive": true,
+  "exclusive": false,
   "gtk-layer-shell": true,
   "passthrough": false,
   "fixed-center": true,
 
   "modules-left": [
-    "hyprland/workspaces",
-    "hyprland/window"
-  ],
-
-  "modules-center": [
+    "clock",
+    "custom/date",
     "mpris"
   ],
 
-  "modules-right": [
-    "cpu",
-    "memory",
-    "battery",
-    "group/connectivity",
-    "pulseaudio",
-    "custom/clock",
-    "custom/power"
+  "modules-center": [
+    "hyprland/workspaces"
   ],
 
-  "group/connectivity": {
-    "orientation": "horizontal",
-    "modules": [
-      "network",
-      "bluetooth",
-      "custom/notification"
-    ]
-  },
+  "modules-right": [
+    "battery",
+    "network",
+    "bluetooth",
+    "custom/notification",
+    "pulseaudio",
+    "custom/power"
+  ],
 
   "network": {
     "format-wifi": "󰖩",
@@ -58,12 +49,6 @@
     "disable-scroll": false
   },
 
-  "hyprland/window": {
-    "format": "{title}",
-    "max-length": 40,
-    "separate-outputs": true
-  },
-
   "mpris": {
     "format": "󰎇 {title}",
     "format-paused": "󰏤 {title}",
@@ -72,20 +57,9 @@
       "default": "󰎇",
       "spotify": "󰓇",
       "firefox": "󰈹",
-      "chromium": "󰊯"
+      "chromium": "󰊯",
+      "youtube-music": "󰗃"
     },
-  },
-
-
-  "cpu": {
-    "format": "󰍛 {usage}%",
-    "interval": 2,
-    "tooltip": false
-  },
-
-  "memory": {
-    "format": "󰘚 {used:0.1f}G",
-    "tooltip": false
   },
 
   "battery": {
@@ -114,10 +88,15 @@
     "tooltip": false
   },
 
-  "custom/clock": {
-    "exec": "~/.config/waybar/clock_toggle.sh",
-    "interval": 1,
-    "on-click": "~/.config/waybar/clock_toggle.sh toggle",
+  "custom/date": {
+    "format": "  {}",
+    "exec": "date '+%A, %d %B %Y'",
+    "interval": 60,
+    "tooltip": false
+  },
+
+  "clock": {
+    "format": "  {:%H:%M}",
     "tooltip": false
   },
 
