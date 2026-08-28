@@ -1,0 +1,163 @@
+/* ============================================================
+ * WLOGOUT
+ * ARK / HYPRLAND DESIGN
+ *
+ * Colors are intentionally centralized here.
+ * These values will later be generated from the wallpaper.
+ * ============================================================ */
+
+@define-color background rgba(12, 14, 15, 0.84);
+@define-color surface rgba(20, 26, 28, 0.92);
+@define-color surface_hover rgba(30, 40, 41, 0.96);
+
+@define-color accent #4a6b6f;
+@define-color accent_border rgba(74, 107, 111, 0.38);
+
+@define-color text #c8d0cc;
+@define-color text_bright #d4cfc6;
+@define-color text_muted #8a9ea0;
+
+@define-color shadow rgba(0, 0, 0, 0.30);
+
+
+/* ============================================================
+ * GLOBAL
+ * ============================================================ */
+
+* {
+    font-family: "JetBrains Mono";
+    font-weight: 500;
+
+    background-image: none;
+    box-shadow: none;
+    text-shadow: none;
+}
+
+
+/* ============================================================
+ * BACKDROP
+ * ============================================================ */
+
+window {
+    background-color: @background;
+}
+
+
+/* ============================================================
+ * BUTTON
+ * ============================================================ */
+
+button {
+    color: @text;
+
+    background-color: @surface;
+
+    border: 1px solid @accent_border;
+    border-radius: 18px;
+
+    margin: 40px 50px;
+    padding: 12px;
+
+    outline: none;
+
+    background-repeat: no-repeat;
+    background-position: center 32%;
+    background-size: 46px;
+
+    box-shadow:
+        0 10px 32px @shadow;
+
+    transition:
+        background-color 180ms ease,
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        color 180ms ease;
+}
+
+
+/* ============================================================
+ * HOVER
+ * ============================================================ */
+
+button:hover {
+    color: @text_bright;
+
+    background-color: @surface_hover;
+
+    border-color: @accent;
+
+    box-shadow:
+        0 12px 38px rgba(0, 0, 0, 0.40),
+        inset 0 0 0 1px rgba(138, 158, 160, 0.08);
+}
+
+
+/* ============================================================
+ * FOCUS
+ * ============================================================ */
+
+button:focus {
+    color: @text_bright;
+
+    background-color: @surface_hover;
+
+    border-color: @accent;
+
+    box-shadow:
+        0 12px 38px rgba(0, 0, 0, 0.40),
+        inset 0 0 0 1px rgba(138, 158, 160, 0.12);
+}
+
+
+/* ============================================================
+ * ACTIVE
+ * ============================================================ */
+
+button:active {
+    background-color: alpha(@accent, 0.45);
+}
+
+
+/* ============================================================
+ * LABEL
+ * ============================================================ */
+
+button label {
+    color: @text;
+
+    margin-top: 62px;
+}
+
+button:hover label,
+button:focus label {
+    color: @text_bright;
+}
+
+
+/* ============================================================
+ * ICONS
+ * ============================================================ */
+
+#lock {
+    background-image: image(url("./icons/lock.svg"));
+}
+
+#hibernate {
+    background-image: image(url("./icons/hibernate.svg"));
+}
+
+#logout {
+    background-image: image(url("./icons/logout.svg"));
+}
+
+#shutdown {
+    background-image: image(url("./icons/shutdown.svg"));
+}
+
+#suspend {
+    background-image: image(url("./icons/suspend.svg"));
+}
+
+#reboot {
+    background-image: image(url("./icons/reboot.svg"));
+}

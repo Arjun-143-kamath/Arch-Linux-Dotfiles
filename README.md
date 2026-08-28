@@ -16,7 +16,7 @@ My personal Arch Linux + Hyprland dotfiles, built around reproducibility, modula
 - Ghostty terminal with live theme reloads
 - Waybar with generated dynamic colors
 - Neovim / LazyVim
-- Rofi, Yazi, Thunar, btop, Cava, SwayNC, and EasyEffects
+- Rofi, Yazi, Thunar, btop, Cava, SwayNC, wlogout, and EasyEffects
 - Separate pacman, AUR, Flatpak, and npm package manifests
 - Automated installation through `scripts/install.sh`
 - User and system configuration kept separate
@@ -64,6 +64,7 @@ ark-dotfiles/
 │   │   ├── btop/
 │   │   ├── cava/
 │   │   ├── kew/
+│   │   ├── wlogout/
 │   │   └── ...
 │   └── .local/bin/
 │
@@ -308,6 +309,41 @@ Configured components include workspaces, window title, media controls, CPU, mem
 
 ---
 
+# wlogout
+
+wlogout provides the graphical power and session menu integrated with Hyprland.
+
+Configuration:
+
+```text
+~/.config/wlogout/
+├── layout
+├── style.css
+└── icons/
+    ├── lock.svg
+    ├── hibernate.svg
+    ├── logout.svg
+    ├── shutdown.svg
+    ├── suspend.svg
+    └── reboot.svg
+```
+
+The wlogout configuration is tracked under:
+
+```text
+home/.config/wlogout/
+```
+
+The menu is launched through the existing Hyprland keybind configuration in:
+
+```text
+~/.config/hypr/keybinds.lua
+```
+
+The lock action uses the wallpaper-aware Hyprlock workflow so the lock screen remains synchronized with the current wallpaper.
+
+---
+
 # Ghostty
 
 Ghostty is the primary terminal emulator.
@@ -362,7 +398,7 @@ packages/
 └── npm.txt
 ```
 
-The installer handles these automatically.
+The installer handles these automatically. 
 
 ---
 
@@ -531,6 +567,7 @@ The result is a modular desktop environment that can be rebuilt without carrying
 | Lock Screen | Hyprlock |
 | Idle Daemon | Hypridle |
 | Notifications | SwayNC |
+| Power Menu | wlogout |
 | Audio | PipeWire / EasyEffects |
 | Network | NetworkManager / iwd |
 | Bluetooth | BlueZ |
