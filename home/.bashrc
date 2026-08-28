@@ -31,3 +31,4 @@ yz() {
   rm -f "$tmp"
 }
 export PATH="$HOME/.local/bin:$PATH"
+export LIBVIRT_DEFAULT_URI="qemu:///system"

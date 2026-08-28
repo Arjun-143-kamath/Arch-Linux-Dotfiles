@@ -65,14 +65,17 @@
   },
 
   "mpris": {
-    "format": "{player_icon} {title}",
-    "format-paused": "{player_icon} {title}",
+    "format": "󰎇 {title}",
+    "format-paused": "󰏤 {title}",
     "max-length": 32,
     "player-icons": {
-      "default": "▶",
-      "paused": "⏸i"
+      "default": "󰎇",
+      "spotify": "󰓇",
+      "firefox": "󰈹",
+      "chromium": "󰊯"
     },
   },
+
 
   "cpu": {
     "format": "󰍛 {usage}%",

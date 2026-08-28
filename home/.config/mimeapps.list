@@ -18,6 +18,7 @@ x-scheme-handler/antigravity=antigravity.desktop
 image/png=viewnior.desktop
 image/webp=viewnior.desktop
 image/gif=viewnior.desktop
+application/x-qemu-disk=virt-manager.desktop
 
 [Added Associations]
 image/jpeg=viewnior.desktop;satty.desktop;
@@ -31,3 +32,4 @@ application/json=code-oss.desktop;
 video/mp4=vlc.desktop;mpv.desktop;
 application/x-zerosize=satty.desktop;
 image/svg+xml=viewnior.desktop;
+application/x-qemu-disk=virt-manager.desktop;
