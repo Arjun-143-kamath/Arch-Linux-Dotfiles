@@ -3,3 +3,4 @@ gpk-bin
 hyprsession
 wlogout
 yay
+tide-island
