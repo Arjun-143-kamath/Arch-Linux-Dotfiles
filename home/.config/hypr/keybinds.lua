@@ -30,7 +30,7 @@ hl.bind(mod .. " + E", hl.dsp.exec_cmd(apps.filemanager))
 hl.bind(mod .. " + V", hl.dsp.window.float({ action = "toggle" }))
 hl.bind(mod .. " + R", hl.dsp.exec_cmd(apps.menu))
 hl.bind(mod .. " + SHIFT + S", hl.dsp.exec_cmd(apps.screenshot))
-hl.bind(mod .. " + P", hl.dsp.window.pseudo({ action = "toggle" }))
+hl.bind(mod .. " + I", hl.dsp.window.pseudo({ action = "toggle" }))
 hl.bind(mod .. " + T", hl.dsp.layout("togglesplit"))
 hl.bind(mod .. " + F", hl.dsp.window.fullscreen({ action = "toggle" }))
 hl.bind(mod .. " + SHIFT + V", hl.dsp.exec_cmd(apps.clipboard))
@@ -46,6 +46,15 @@ hl.bind(
 	hl.dsp.exec_cmd("ghostty -e impala", {
 		float = true,
 		center = true,
+	})
+)
+
+hl.bind(
+	"SUPER + P",
+	hl.dsp.exec_cmd("ghostty -e kew", {
+		float = true,
+		center = true,
+		size = { 600, 850 },
 	})
 )
 
