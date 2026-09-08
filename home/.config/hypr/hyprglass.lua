@@ -34,12 +34,6 @@ hg.layer("waybar", {
 	mask_threshold = 0.05,
 })
 
--- SwayNC
-hg.layer("swaync", {
-	preset = "subtle",
-	mask_threshold = 0.05,
-})
-
 -- Your custom glass preset
 hg.preset("arjun_glass", {
 	inherits = "glass",

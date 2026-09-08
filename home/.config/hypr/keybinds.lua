@@ -68,7 +68,7 @@ hl.bind(
 
 hl.bind(
 	"SUPER + SHIFT + A",
-	hl.dsp.exec_cmd("pavucontrol", {
+	hl.dsp.exec_cmd("com.github.wwmm.easyeffects", {
 		float = true,
 		size = { 1000, 700 },
 		center = true,
