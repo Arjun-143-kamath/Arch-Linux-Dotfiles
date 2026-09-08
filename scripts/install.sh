@@ -336,6 +336,104 @@ deploy_system() {
       "$backup_root"
   fi
 
+  # --------------------------------------------------------
+  # SDDM wallpaper storage
+  # --------------------------------------------------------
+  #
+  # The wallpaper itself is generated at runtime.
+  # The directory is owned by the desktop user so
+  # change_wall_on_key.sh can update it without sudo.
+  #
+
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "  [DRY-RUN] Would create: /var/lib/sddm-wallpaper"
+  else
+    echo "  + Creating: /var/lib/sddm-wallpaper"
+
+    sudo install \
+      -d \
+      -o "$USER" \
+      -g "$USER" \
+      -m 755 \
+      "/var/lib/sddm-wallpaper"
+  fi
+
+  # --------------------------------------------------------
+  # Pixie SDDM wallpaper link
+  # --------------------------------------------------------
+  #
+  # Pixie already expects:
+  #
+  # assets/current-wallpaper.png
+  #
+  # Keep that path stable and point it at our persistent
+  # SDDM wallpaper copy.
+  #
+
+  PIXIE_WALLPAPER="/usr/share/sddm/themes/pixie/assets/current-wallpaper.png"
+
+  if [[ "$DRY_RUN" == true ]]; then
+    echo "  [DRY-RUN] Would link:"
+    echo "    $PIXIE_WALLPAPER"
+    echo "    -> /var/lib/sddm-wallpaper/current.png"
+  elif [[ -d "/usr/share/sddm/themes/pixie/assets" ]]; then
+    echo "  + Linking Pixie wallpaper"
+
+    sudo rm -f "$PIXIE_WALLPAPER"
+
+    sudo ln -s \
+      "/var/lib/sddm-wallpaper/current.png" \
+      "$PIXIE_WALLPAPER"
+  else
+    warn "Pixie SDDM theme assets directory not found."
+    warn "The Pixie wallpaper link was not created."
+  fi
+
+  # --------------------------------------------------------
+  # Initialize SDDM wallpaper from Walltheme state
+  # --------------------------------------------------------
+
+  local state_file="$HOME/.local/state/walltheme/current_wallpaper"
+  local sddm_wallpaper="/var/lib/sddm-wallpaper/current.png"
+
+  if [[ "$DRY_RUN" == true ]]; then
+
+    echo "  [DRY-RUN] Would initialize SDDM wallpaper from:"
+    echo "    $state_file"
+
+  elif [[ -f "$state_file" ]]; then
+
+    local current_wallpaper
+    current_wallpaper="$(cat "$state_file")"
+
+    if [[ -f "$current_wallpaper" ]]; then
+
+      echo "  + Initializing SDDM wallpaper:"
+      echo "    $current_wallpaper"
+
+      local temp_wallpaper="${sddm_wallpaper}.tmp"
+
+      rm -f "$temp_wallpaper"
+
+      cp "$current_wallpaper" "$temp_wallpaper"
+      chmod 644 "$temp_wallpaper"
+
+      mv -f "$temp_wallpaper" "$sddm_wallpaper"
+
+    else
+
+      warn "Walltheme state points to a missing wallpaper:"
+      warn "  $current_wallpaper"
+
+    fi
+
+  else
+
+    echo "  No existing Walltheme wallpaper state found."
+    echo "  SDDM wallpaper will be initialized when a wallpaper is selected."
+
+  fi
+
   echo
   echo "System configuration deployed."
 
