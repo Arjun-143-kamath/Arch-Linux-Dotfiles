@@ -13,9 +13,8 @@ BASE = Path.home() / ".config" / "walltheme"
 THEME_FILE = BASE / "current.json"
 
 OUTPUT = (
-    Path.home()
-    / ".config"
-    / "hypr"
+    BASE
+    / "generated"
     / "hyprlock.conf"
 )
 

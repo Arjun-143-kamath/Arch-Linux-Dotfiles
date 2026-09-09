@@ -70,3 +70,6 @@ Thumbs.db
 
 # Application databases / state
 home/.config/kew/library.dat
+
+# Kew runtime/configuration
+home/.config/kew/
