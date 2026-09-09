@@ -10,7 +10,7 @@
 
   "modules-left": [
     "clock",
-    "custom/date",
+    "clock#date",
     "mpris"
   ],
 
@@ -87,11 +87,16 @@
     "tooltip": false
   },
 
-  "custom/date": {
-    "format": "  {}",
-    "exec": "date '+%A, %d %B %Y'",
-    "interval": 60,
-    "tooltip": false
+  "clock#date": {
+    "format": "  {:%A, %d %B %Y}",
+    "tooltip": true,
+    "tooltip-format": "<tt>{calendar}</tt>",
+    "calendar": {
+      "mode": "month",
+      "mode-mon-col": 3,
+      "weeks-pos": "right",
+      "on-scroll": 1
+    }
   },
 
   "clock": {
