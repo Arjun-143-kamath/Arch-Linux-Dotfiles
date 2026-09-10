@@ -42,13 +42,13 @@ hg.preset("arjun_glass", {
 	blur_strength = 4,
 	blur_iterations = 3,
 
-	refraction_strength = 0.48,
+	refraction_strength = 0.60,
 	chromatic_aberration = 0.5,
-	fresnel_strength = 0.45,
+	fresnel_strength = 0.6,
 	specular_strength = 0.5,
 
-	edge_thickness = 0.5,
-	lens_distortion = 0.85,
+	edge_thickness = 0.7,
+	lens_distortion = 0.88,
 
 	dark = {
 		brightness = 0.82,
