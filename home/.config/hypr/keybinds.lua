@@ -38,6 +38,7 @@ hl.bind(mod .. " + SHIFT + M", hl.dsp.exec_cmd(apps.logout))
 hl.bind("ALT + SHIFT + right", hl.dsp.exec_cmd(apps.wallfor))
 hl.bind("ALT + SHIFT + left", hl.dsp.exec_cmd(apps.wallback))
 hl.bind("SUPER + W", hl.dsp.exec_cmd(apps.rewaybar))
+hl.bind("SUPER +SHIFT + P", hl.dsp.window.pin({ action = "toggle" }))
 
 local apps = require("apps")
 
