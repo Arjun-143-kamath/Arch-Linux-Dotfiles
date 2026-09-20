@@ -6,55 +6,64 @@ CONFIG="$HOME/.config/walltheme/config"
 
 if [ ! -f "$CONFIG" ]; then
     echo "Walltheme configuration not found:"
-    echo "  $CONFIG"
     exit 1
 fi
 
 source "$CONFIG"
 
-CURRENT_WALLPAPER_LINK="${CURRENT_WALLPAPER_LINK/#\~/$HOME}"
-STATE_FILE="${STATE_FILE/#\~/$HOME}"
-
-mkdir -p "$(dirname "$CURRENT_WALLPAPER_LINK")"
-
-# =========================================================
-# READ CURRENT WALLPAPER
-# =========================================================
-
-WALL=""
-
-if [ -f "$STATE_FILE" ]; then
-    WALL="$(cat "$STATE_FILE")"
-fi
-
-# =========================================================
-# VALIDATE
-# =========================================================
+WALL="${1:-}"
 
 if [ -z "$WALL" ] || [ ! -f "$WALL" ]; then
-    echo "Current wallpaper is unavailable."
-
-    # Recover the wallpaper state.
-    "$HOME/.local/bin/set_current_wall.sh"
-
-    if [ -f "$STATE_FILE" ]; then
-        WALL="$(cat "$STATE_FILE")"
-    fi
-fi
-
-if [ -z "$WALL" ] || [ ! -f "$WALL" ]; then
-    echo "Could not determine current wallpaper."
+    echo "Wallpaper not found:"
+    echo "  $WALL"
     exit 1
 fi
 
+CURRENT_WALLPAPER_LINK="${CURRENT_WALLPAPER_LINK/#\~/$HOME}"
+STATE_FILE="${STATE_FILE/#\~/$HOME}"
+
+mkdir -p "$(dirname "$STATE_FILE")"
+
 # =========================================================
-# SYNCHRONIZE HYPRLOCK LINK
+# WALLTHEME STATE
+# =========================================================
+
+printf '%s\n' "$WALL" > "$STATE_FILE"
+
+# =========================================================
+# DISPLAY
+# =========================================================
+
+awww img "$WALL" \
+    --transition-type fade \
+    --transition-fps 60
+
+# =========================================================
+# THEME GENERATION
+# =========================================================
+
+"$HOME/.local/bin/walltheme" "$WALL"
+
+# =========================================================
+# PRESENTATION WALLPAPER
 # =========================================================
 
 "$HOME/.local/bin/sync_wallpaper_presentation.sh"
 
 # =========================================================
-# START HYPRLOCK
+# SDDM
 # =========================================================
 
-exec hyprlock
+SDDM_WALLPAPER="/var/lib/sddm-wallpaper/current.png"
+SDDM_TEMP="${SDDM_WALLPAPER}.tmp"
+
+rm -f "$SDDM_TEMP"
+
+cp "$(readlink -f "$CURRENT_WALLPAPER_LINK")" "$SDDM_TEMP"
+
+chmod 644 "$SDDM_TEMP"
+
+mv -f "$SDDM_TEMP" "$SDDM_WALLPAPER"
+
+echo "Wallpaper set through Walltheme:"
+echo "  $WALL"

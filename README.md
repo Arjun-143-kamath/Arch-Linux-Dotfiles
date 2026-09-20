@@ -13,7 +13,7 @@ My personal Arch Linux + Hyprland dotfiles, built around reproducibility, modula
 - Hyprglass integration through Hyprland's plugin manager
 - Automatic theme generation for Hyprland, Waybar, Ghostty, and Hyprlock
 - Synchronized wallpaper state across the desktop, lock screen, and SDDM
-- swaybg wallpaper management
+- awww wallpaper management (including animated GIFs)
 - Ghostty terminal with live theme reloads
 - Waybar with generated dynamic colors
 - Neovim / LazyVim
@@ -248,7 +248,7 @@ It:
 2. Determines the next wallpaper
 3. Updates persistent wallpaper state
 4. Updates the stable wallpaper symlink
-5. Restarts `swaybg`
+5. Applies the wallpaper through `awww`
 6. Runs `walltheme`
 7. Regenerates the desktop theme
 8. Reloads the relevant components
@@ -300,7 +300,7 @@ The intended flow is:
 ```text
 Current wallpaper
        │
-       ├──► Hyprland / swaybg
+       ├──► Hyprland / awww
        ├──► Waybar theme
        ├──► Ghostty theme
        ├──► Hyprlock
@@ -632,7 +632,7 @@ The result is a modular desktop environment that can be rebuilt without carrying
 | Editor | Neovim / LazyVim |
 | Launcher | Rofi |
 | File Manager | Yazi / Thunar |
-| Wallpaper | swaybg |
+| Wallpaper | awww |
 | Lock Screen | Hyprlock |
 | Idle Daemon | Hypridle |
 | Notifications | SwayNC |

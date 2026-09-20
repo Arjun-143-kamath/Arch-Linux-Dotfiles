@@ -10,4 +10,4 @@ CURRENT_WALLPAPER_LINK="$HOME/.config/walltheme/current-wallpaper"
 STATE_FILE="$HOME/.local/state/walltheme/current_wallpaper"
 
 # Supported wallpaper extensions.
-WALLPAPER_EXTENSIONS="png jpg jpeg webp avif"
+WALLPAPER_EXTENSIONS="png jpg jpeg webp avif gif"

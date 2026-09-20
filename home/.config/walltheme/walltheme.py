@@ -19,6 +19,19 @@ OUTPUT = BASE / "current.json"
 IMAGE_SIZE = 256
 COLOR_COUNT = 16
 
+# Number of representative frames to use when
+# generating a palette from an animated GIF.
+GIF_FRAME_COUNT = 5
+
+# Each sampled GIF frame receives equal weight during
+# palette extraction.
+GIF_ANALYSIS_SIZE = 128
+
+# Cached static frame used by components that cannot
+# display animated wallpapers, such as Hyprlock and SDDM.
+PRESENTATION_DIR = BASE / "cache"
+PRESENTATION_OUTPUT = PRESENTATION_DIR / "current-presentation.png"
+
 
 # =========================================================
 # BASIC COLOR UTILITIES
@@ -320,23 +333,170 @@ def shift_hue(rgb, amount):
 
 
 # =========================================================
+# PRESENTATION FRAME
+# =========================================================
+
+def create_presentation_frame(path):
+    """
+    Create a full-resolution static presentation frame for
+    animated wallpapers.
+
+    Static wallpapers are returned unchanged.
+
+    GIFs use the middle frame so the same frame is also
+    represented among the distributed palette samples.
+    """
+
+    if path.suffix.lower() != ".gif":
+        return path
+
+    image = Image.open(path)
+
+    try:
+        if not getattr(image, "is_animated", False):
+            return path
+
+        frame_count = getattr(
+            image,
+            "n_frames",
+            1
+        )
+
+        frame_index = round(
+            (frame_count - 1) * 0.5
+        )
+
+        image.seek(frame_index)
+
+        frame = image.convert("RGB")
+
+        PRESENTATION_DIR.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        temporary = (
+            PRESENTATION_OUTPUT.with_suffix(".tmp.png")
+        )
+
+        frame.save(
+            temporary,
+            format="PNG"
+        )
+
+        temporary.replace(
+            PRESENTATION_OUTPUT
+        )
+
+    finally:
+        image.close()
+
+    return PRESENTATION_OUTPUT
+
+
+# =========================================================
 # IMAGE LOADING
 # =========================================================
 
 def load_wallpaper(path):
+    """
+    Load a wallpaper for palette extraction.
 
-    image = Image.open(
-        path
-    ).convert("RGB")
+    Static images follow the original path.
 
-    image.thumbnail(
+    Animated GIFs are sampled at evenly distributed
+    points in the animation. Each sampled frame is
+    resized to the same analysis size and placed into
+    one analysis image so every sampled frame has equal
+    weight during color extraction.
+    """
+
+    image = Image.open(path)
+
+    # -----------------------------------------------------
+    # STATIC IMAGE
+    # -----------------------------------------------------
+
+    if not getattr(image, "is_animated", False):
+        image = image.convert("RGB")
+
+        image.thumbnail(
+            (
+                IMAGE_SIZE,
+                IMAGE_SIZE
+            )
+        )
+
+        return image
+
+    # -----------------------------------------------------
+    # ANIMATED GIF
+    # -----------------------------------------------------
+
+    frame_count = getattr(
+        image,
+        "n_frames",
+        1
+    )
+
+    sample_count = min(
+        GIF_FRAME_COUNT,
+        frame_count
+    )
+
+    if sample_count == 1:
+        indices = [0]
+    else:
+        indices = [
+            round(
+                i * (frame_count - 1) /
+                (sample_count - 1)
+            )
+            for i in range(sample_count)
+        ]
+
+    frames = []
+
+    for index in indices:
+
+        image.seek(index)
+
+        frame = image.convert("RGB")
+
+        frame = frame.resize(
+            (
+                GIF_ANALYSIS_SIZE,
+                GIF_ANALYSIS_SIZE
+            ),
+            Image.Resampling.LANCZOS
+        )
+
+        frames.append(frame.copy())
+
+    image.close()
+
+    # Stack all sampled frames vertically.
+    # Every frame has identical dimensions, so every
+    # frame contributes the same number of pixels.
+    analysis = Image.new(
+        "RGB",
         (
-            IMAGE_SIZE,
-            IMAGE_SIZE
+            GIF_ANALYSIS_SIZE,
+            GIF_ANALYSIS_SIZE * len(frames)
         )
     )
 
-    return image
+    for position, frame in enumerate(frames):
+
+        analysis.paste(
+            frame,
+            (
+                0,
+                position * GIF_ANALYSIS_SIZE
+            )
+        )
+
+    return analysis
 
 
 # =========================================================
@@ -1019,6 +1179,12 @@ def main():
 
     try:
 
+        presentation_wallpaper = (
+            create_presentation_frame(
+                wallpaper
+            )
+        )
+
         image = load_wallpaper(
             wallpaper
         )
@@ -1056,6 +1222,11 @@ def main():
         "wallpaper": str(
             wallpaper
         ),
+
+        "presentation_wallpaper": str(
+            presentation_wallpaper
+        ),
+
         **theme,
         "colors": [
             {

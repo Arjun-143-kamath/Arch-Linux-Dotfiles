@@ -33,6 +33,7 @@ mapfile -d '' WALLPAPERS < <(
     -o -iname "*.jpeg" \
     -o -iname "*.webp" \
     -o -iname "*.avif" \
+    -o -iname "*.gif" \
     \) \
     -print0 |
     sort -zV
@@ -94,36 +95,13 @@ WALL="${WALLPAPERS[$next_index]}"
 printf '%s\n' "$WALL" >"$STATE_FILE"
 
 # =========================================================
-# KEEP HYPRLOCK SYNCHRONIZED
-# =========================================================
-
-ln -sfn "$WALL" "$CURRENT_WALLPAPER_LINK"
-
-# =========================================================
 # CHANGE DESKTOP WALLPAPER
 # =========================================================
 
-pkill swaybg 2>/dev/null || true
-
-swaybg -i "$WALL" -m fill &
-
-# =========================================================
-# SYNCHRONIZE SDDM
-#
-# current_wallpaper remains the single source of truth.
-# The SDDM copy is only a presentation copy.
-# =========================================================
-
-SDDM_WALLPAPER="/var/lib/sddm-wallpaper/current.png"
-SDDM_TEMP="${SDDM_WALLPAPER}.tmp"
-
-rm -f "$SDDM_TEMP"
-
-cp "$WALL" "$SDDM_TEMP"
-
-chmod 644 "$SDDM_TEMP"
-
-mv -f "$SDDM_TEMP" "$SDDM_WALLPAPER"
+# Apply wallpaper through awww.
+awww img "$WALL" \
+  --transition-type fade \
+  --transition-fps 60
 
 # =========================================================
 # APPLY WALLTHEME
@@ -138,6 +116,30 @@ if [ ! -x "$WALLTHEME" ]; then
 fi
 
 "$WALLTHEME" "$WALL"
+
+# =========================================================
+# SYNCHRONIZE PRESENTATION WALLPAPER
+# =========================================================
+
+"$HOME/.local/bin/sync_wallpaper_presentation.sh"
+
+# =========================================================
+# SYNCHRONIZE SDDM
+#
+# SDDM always receives a static presentation image.
+# The actual wallpaper remains in STATE_FILE.
+# =========================================================
+
+SDDM_WALLPAPER="/var/lib/sddm-wallpaper/current.png"
+SDDM_TEMP="${SDDM_WALLPAPER}.tmp"
+
+rm -f "$SDDM_TEMP"
+
+cp "$(readlink -f "$CURRENT_WALLPAPER_LINK")" "$SDDM_TEMP"
+
+chmod 644 "$SDDM_TEMP"
+
+mv -f "$SDDM_TEMP" "$SDDM_WALLPAPER"
 
 # =========================================================
 # OUTPUT
