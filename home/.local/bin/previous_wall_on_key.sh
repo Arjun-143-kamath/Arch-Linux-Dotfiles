@@ -36,6 +36,7 @@ mapfile -d '' WALLPAPERS < <(
     -o -iname "*.gif" \
     -o -iname "*.mp4" \
     -o -iname "*.webm" \
+    -o -iname "*.mkv" \
     \) \
     -print0 |
     sort -zV

@@ -13,16 +13,47 @@ fi
 EXT="${WALL##*.}"
 EXT="${EXT,,}"
 
-# Only one renderer should own the desktop at a time.
+# Only one video renderer should own the desktop at a time.
 pkill -x mpvpaper 2>/dev/null || true
+
+# =========================================================
+# AWWW DAEMON
+# =========================================================
+
+# Walltheme owns the aww daemon. A running process is not enough;
+# wait until the daemon is actually responding to commands.
+ensure_awww_ready() {
+    if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+        awww-daemon >/dev/null 2>&1 &
+    fi
+
+    for _ in {1..100}; do
+        if awww query >/dev/null 2>&1; then
+            return 0
+        fi
+
+        # If the daemon died while we were waiting, restart it.
+        if ! pgrep -x awww-daemon >/dev/null 2>&1; then
+            awww-daemon >/dev/null 2>&1 &
+        fi
+
+        sleep 0.1
+    done
+
+    echo "Walltheme: aww daemon did not become ready." >&2
+    return 1
+}
+
+ensure_awww_ready || exit 1
 
 case "$EXT" in
 
     mp4|webm|mkv)
 
-        # Ask Walltheme for the cached first frame.
-        # On a cache miss, Walltheme generates and stores
-        # both first.png and middle.png.
+        # =====================================================
+        # PREPARE VIDEO PRESENTATION FRAME
+        # =====================================================
+
         FIRST_FRAME="$(
             python - "$WALL" <<'PY'
 import importlib.util
@@ -30,6 +61,7 @@ from pathlib import Path
 import sys
 
 wallpaper = Path(sys.argv[1]).resolve()
+
 module_path = (
     Path.home()
     / ".config"
@@ -75,19 +107,34 @@ PY
             --transition-fps 60 \
             --transition-duration 0.6
 
-        mapfile -t MONITORS < <(
-            hyprctl monitors -j |
-                python -c '
+        # =====================================================
+        # WAIT FOR HYPRLAND MONITORS
+        # =====================================================
+
+        MONITORS=()
+
+        for _ in {1..50}; do
+
+            mapfile -t MONITORS < <(
+                hyprctl monitors -j 2>/dev/null |
+                    python -c '
 import json
 import sys
 
 for monitor in json.load(sys.stdin):
     print(monitor["name"])
-'
-        )
+' 2>/dev/null || true
+            )
+
+            if [ "${#MONITORS[@]}" -gt 0 ]; then
+                break
+            fi
+
+            sleep 0.2
+        done
 
         if [ "${#MONITORS[@]}" -eq 0 ]; then
-            echo "No Hyprland monitors found."
+            echo "No Hyprland monitors became available."
             exit 1
         fi
 
@@ -95,9 +142,14 @@ for monitor in json.load(sys.stdin):
         # rendering from frame 0.
         sleep 0.6
 
+        # =====================================================
+        # START MPVPAPER
+        # =====================================================
+
         PIDS=()
 
         for monitor in "${MONITORS[@]}"; do
+
             mpvpaper \
                 -o "no-audio --loop-file=inf --no-osc --osd-level=0 --really-quiet" \
                 "$monitor" \
@@ -109,14 +161,21 @@ for monitor in json.load(sys.stdin):
 
         sleep 0.2
 
+        # =====================================================
+        # VERIFY MPVPAPER
+        # =====================================================
+
         for pid in "${PIDS[@]}"; do
+
             if ! kill -0 "$pid" 2>/dev/null; then
+
                 for started in "${PIDS[@]}"; do
                     kill "$started" 2>/dev/null || true
                 done
 
                 echo "mpvpaper failed to start for:"
                 echo "  $WALL"
+
                 exit 1
             fi
         done
@@ -124,10 +183,12 @@ for monitor in json.load(sys.stdin):
         ;;
 
     *)
+
         awww img "$WALL" \
             --transition-type fade \
             --transition-fps 60 \
             --transition-duration 0.6
+
         ;;
 
 esac

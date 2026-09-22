@@ -1,43 +1,84 @@
 #!/bin/bash
 
-set -e
+set -euo pipefail
 
 # =========================================================
 # SDDM WALLPAPER SYNCHRONIZATION
 #
-# The single source of truth is:
+# SDDM must always receive a static image.
 #
-# ~/.local/state/walltheme/current_wallpaper
+# The desktop's actual wallpaper may be:
+#   image / GIF / MP4 / WebM / MKV
 #
-# During a desktop wallpaper change, change_wall_on_key.sh
-# copies the selected wallpaper to:
-#
-# /var/lib/sddm-wallpaper/current.png
-#
-# SDDM itself only needs to make sure that this file exists.
-#
-# IMPORTANT:
-# SDDM starts before the desktop user logs in, so this script
-# must NOT depend on loginctl or the user's active session.
+# For animated/video wallpapers, use the already-generated
+# Walltheme presentation frame instead of copying the source
+# video into a .png file.
 # =========================================================
 
-SDDM_WALLPAPER="/var/lib/sddm-wallpaper/current.png"
+PIXIE_WALLPAPER="/var/lib/sddm-wallpaper/current.png"
 
 # =========================================================
-# VALIDATE SDDM WALLPAPER
+# FIND WALLTHEME STATE
 # =========================================================
 
-if [[ ! -f "$SDDM_WALLPAPER" ]]; then
-  echo "SDDM wallpaper: no synchronized wallpaper found:"
-  echo "  $SDDM_WALLPAPER"
-  exit 0
+STATE_FILE="$(
+    find /home \
+        -type f \
+        -path '*/.local/state/walltheme/current_wallpaper' \
+        -print \
+        -quit
+)"
+
+if [[ -z "$STATE_FILE" ]]; then
+    echo "SDDM wallpaper: walltheme state file not found"
+    exit 1
+fi
+
+USER_HOME="${STATE_FILE%/.local/state/walltheme/current_wallpaper}"
+
+WALL="$(cat "$STATE_FILE")"
+
+# =========================================================
+# VALIDATE CURRENT WALLPAPER
+# =========================================================
+
+if [[ -z "$WALL" || ! -f "$WALL" ]]; then
+    echo "SDDM wallpaper: wallpaper does not exist:"
+    echo "  $WALL"
+    exit 1
 fi
 
 # =========================================================
-# ENSURE SDDM CAN READ IT
+# DETERMINE STATIC PRESENTATION IMAGE
 # =========================================================
 
-chmod 644 "$SDDM_WALLPAPER"
+PRESENTATION_LINK="$USER_HOME/.config/walltheme/current-wallpaper"
 
-echo "SDDM wallpaper ready:"
-echo "  $SDDM_WALLPAPER"
+if [[ -e "$PRESENTATION_LINK" ]]; then
+    PRESENTATION="$(readlink -f "$PRESENTATION_LINK")"
+else
+    PRESENTATION="$WALL"
+fi
+
+if [[ ! -f "$PRESENTATION" ]]; then
+    echo "SDDM wallpaper: presentation image does not exist:"
+    echo "  $PRESENTATION"
+    exit 1
+fi
+
+# =========================================================
+# SYNCHRONIZE SDDM
+# =========================================================
+
+TEMP="${PIXIE_WALLPAPER}.tmp"
+
+rm -f "$TEMP"
+
+cp "$PRESENTATION" "$TEMP"
+
+chmod 644 "$TEMP"
+
+mv -f "$TEMP" "$PIXIE_WALLPAPER"
+
+echo "SDDM wallpaper synchronized:"
+echo "  $PRESENTATION"
