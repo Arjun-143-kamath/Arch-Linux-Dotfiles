@@ -39,16 +39,16 @@ hg.preset("arjun_glass", {
 	inherits = "glass",
 
 	glass_opacity = 0.88,
-	blur_strength = 4,
-	blur_iterations = 3,
+	blur_strength = 2,
+	blur_iterations = 1,
 
 	refraction_strength = 0.60,
 	chromatic_aberration = 0.5,
 	fresnel_strength = 0.6,
 	specular_strength = 0.5,
 
-	edge_thickness = 0.7,
-	lens_distortion = 0.88,
+	edge_thickness = 0.2,
+	lens_distortion = 0.5,
 
 	dark = {
 		brightness = 0.82,
