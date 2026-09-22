@@ -75,10 +75,16 @@ printf '%s\n' "$WALL" >"$STATE_FILE"
 # SET WALLPAPER
 # =========================================================
 
-# Apply wallpaper through awww.
-awww img "$WALL" \
-  --transition-type fade \
-  --transition-fps 60
+# Apply wallpaper through Walltheme's renderer.
+WALLPAPER_RENDERER="$HOME/.local/bin/walltheme-renderer.sh"
+
+if [ ! -x "$WALLPAPER_RENDERER" ]; then
+  echo "Wallpaper renderer not found:"
+  echo "  $WALLPAPER_RENDERER"
+  exit 1
+fi
+
+"$WALLPAPER_RENDERER" "$WALL"
 
 # =========================================================
 # APPLY WALLTHEME

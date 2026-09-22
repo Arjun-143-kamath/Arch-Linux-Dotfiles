@@ -89,6 +89,8 @@ sof-firmware
 steam
 sudo
 awww
+mpvpaper
+ffmpeg
 python-pillow
 swtpm
 tectonic

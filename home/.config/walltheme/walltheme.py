@@ -3,9 +3,12 @@
 from PIL import Image
 from pathlib import Path
 import colorsys
+import hashlib
 import json
 import math
+import subprocess
 import sys
+import tempfile
 
 
 # =========================================================
@@ -27,10 +30,34 @@ GIF_FRAME_COUNT = 5
 # palette extraction.
 GIF_ANALYSIS_SIZE = 128
 
-# Cached static frame used by components that cannot
-# display animated wallpapers, such as Hyprlock and SDDM.
+# Video wallpaper formats supported by Walltheme.
+VIDEO_EXTENSIONS = {
+    ".mp4",
+    ".webm",
+    ".mkv",
+}
+
+# Video frames are kept in the user's local cache rather
+# than inside the dotfiles/config tree.
+VIDEO_CACHE_ROOT = (
+    Path.home()
+    / ".cache"
+    / "walltheme"
+    / "video-frames"
+)
+
+VIDEO_ANALYSIS_SIZE = 128
+
+# Increment this when the cache structure or extraction
+# strategy changes.
+VIDEO_CACHE_VERSION = 1
+
+# Static presentation image used by Hyprlock and SDDM.
 PRESENTATION_DIR = BASE / "cache"
-PRESENTATION_OUTPUT = PRESENTATION_DIR / "current-presentation.png"
+PRESENTATION_OUTPUT = (
+    PRESENTATION_DIR
+    / "current-presentation.png"
+)
 
 
 # =========================================================
@@ -214,182 +241,473 @@ def contrast_ratio(c1, c2):
 # ACCENT GENERATION
 # =========================================================
 
-def make_dark_accent(rgb):
+def adjust_contrast_preserve_hue(
+    rgb,
+    reference,
+    minimum_ratio=4.5,
+):
     """
-    Preserve the wallpaper's hue while forcing the
-    resulting color into a dark, saturated range.
+    Preserve the wallpaper-derived hue and saturation.
 
-    Used for surfaces sitting directly against
-    bright wallpapers.
+    The original extracted color is always preferred. When
+    contrast is insufficient, only HSV value is adjusted.
+
+    If no value at the original hue/saturation can satisfy the
+    requirement, return the same-hue/same-saturation variant
+    with the strongest available contrast.
     """
+
+    if contrast_ratio(
+        rgb,
+        reference
+    ) >= minimum_ratio:
+        return rgb
 
     h = hue(rgb)
-
-    s = max(
-        saturation(rgb),
-        0.55
-    )
-
-    v = 0.32
-
-    r, g, b = colorsys.hsv_to_rgb(
-        h,
-        min(s, 0.90),
-        v
-    )
-
-    return (
-        int(r * 255),
-        int(g * 255),
-        int(b * 255)
-    )
-
-
-def make_bright_accent(rgb):
-    """
-    Preserve the wallpaper's hue while forcing the
-    resulting color into a bright, saturated range.
-
-    Used for text/icons on dark surfaces.
-    """
-
-    h = hue(rgb)
-
-    s = max(
-        saturation(rgb),
-        0.55
-    )
-
-    v = 0.85
-
-    r, g, b = colorsys.hsv_to_rgb(
-        h,
-        min(s, 0.90),
-        v
-    )
-
-    return (
-        int(r * 255),
-        int(g * 255),
-        int(b * 255)
-    )
-
-
-def boost_saturation(rgb, amount=0.15):
-    """
-    Increase saturation while preserving hue.
-    """
-
-    h = hue(rgb)
-
-    s = min(
-        1.0,
-        saturation(rgb) + amount
-    )
-
-    v = max(
-        brightness(rgb) / 255,
-        0.35
-    )
-
-    r, g, b = colorsys.hsv_to_rgb(
-        h,
-        s,
-        v
-    )
-
-    return (
-        int(r * 255),
-        int(g * 255),
-        int(b * 255)
-    )
-
-
-def shift_hue(rgb, amount):
-    """
-    Shift hue while preserving saturation/value.
-    """
-
-    h = hue(rgb)
-
     s = saturation(rgb)
+    original_v = brightness(rgb) / 255
 
-    v = max(
-        brightness(rgb) / 255,
-        0.35
+    best = None
+    best_change = float("inf")
+
+    for step in range(101):
+
+        v = step / 100
+
+        r, g, b = colorsys.hsv_to_rgb(
+            h,
+            s,
+            v
+        )
+
+        candidate = (
+            int(round(r * 255)),
+            int(round(g * 255)),
+            int(round(b * 255))
+        )
+
+        ratio = contrast_ratio(
+            candidate,
+            reference
+        )
+
+        if ratio < minimum_ratio:
+            continue
+
+        change = abs(
+            v - original_v
+        )
+
+        if change < best_change:
+            best = candidate
+            best_change = change
+
+    if best is not None:
+        return best
+
+    # The requested contrast is impossible at this hue and
+    # saturation. Stay faithful to the wallpaper and return the
+    # strongest contrast available along the same HSV line.
+    best = rgb
+    best_ratio = contrast_ratio(
+        rgb,
+        reference
     )
 
-    r, g, b = colorsys.hsv_to_rgb(
-        (h + amount) % 1.0,
-        s,
-        v
+    for step in range(101):
+
+        v = step / 100
+
+        r, g, b = colorsys.hsv_to_rgb(
+            h,
+            s,
+            v
+        )
+
+        candidate = (
+            int(round(r * 255)),
+            int(round(g * 255)),
+            int(round(b * 255))
+        )
+
+        ratio = contrast_ratio(
+            candidate,
+            reference
+        )
+
+        if ratio > best_ratio:
+            best = candidate
+            best_ratio = ratio
+
+    return best
+
+
+# =========================================================
+# VIDEO HELPERS
+# =========================================================
+
+def video_duration(path):
+    """
+    Return the duration of a video in seconds.
+    """
+
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
     )
+
+    try:
+        duration = float(
+            result.stdout.strip()
+        )
+    except ValueError as error:
+        raise RuntimeError(
+            "Could not determine video duration."
+        ) from error
+
+    if not math.isfinite(duration) or duration <= 0:
+        raise RuntimeError(
+            "Video duration is invalid."
+        )
+
+    return duration
+
+
+def video_cache_info(path):
+    """
+    Build the local cache paths and source identity for
+    a video wallpaper.
+    """
+
+    path = path.resolve()
+    stat = path.stat()
+
+    identity = (
+        f"{path}\n"
+        f"{stat.st_mtime_ns}\n"
+        f"{stat.st_size}"
+    ).encode()
+
+    cache_key = hashlib.sha256(
+        identity
+    ).hexdigest()[:24]
+
+    directory = (
+        VIDEO_CACHE_ROOT
+        / cache_key
+    )
+
+    return {
+        "key": cache_key,
+        "directory": directory,
+        "first": directory / "first.png",
+        "middle": directory / "middle.png",
+        "metadata": directory / "metadata.json",
+        "path": path,
+        "mtime_ns": stat.st_mtime_ns,
+        "size": stat.st_size,
+    }
+
+
+def video_cache_valid(path):
+    """
+    Return True when both cached frames belong to the
+    exact current version of the source video.
+    """
+
+    info = video_cache_info(path)
+
+    if not (
+        info["first"].is_file()
+        and info["middle"].is_file()
+        and info["metadata"].is_file()
+    ):
+        return False
+
+    try:
+        metadata = json.loads(
+            info["metadata"].read_text()
+        )
+    except (
+        OSError,
+        ValueError,
+    ):
+        return False
 
     return (
-        int(r * 255),
-        int(g * 255),
-        int(b * 255)
+        metadata.get("version")
+        == VIDEO_CACHE_VERSION
+        and metadata.get("path")
+        == str(info["path"])
+        and metadata.get("mtime_ns")
+        == info["mtime_ns"]
+        and metadata.get("size")
+        == info["size"]
     )
 
 
-# =========================================================
-# PRESENTATION FRAME
-# =========================================================
+def extract_video_frame(
+    path,
+    timestamp,
+    output,
+):
+    """
+    Extract one video frame with FFmpeg.
+    """
+
+    output.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    subprocess.run(
+        [
+            "ffmpeg",
+            "-hide_banner",
+            "-loglevel",
+            "error",
+            "-y",
+            "-ss",
+            f"{timestamp:.6f}",
+            "-i",
+            str(path),
+            "-map",
+            "0:v:0",
+            "-frames:v",
+            "1",
+            "-an",
+            str(output),
+        ],
+        check=True,
+    )
+
+    if not output.is_file():
+        raise RuntimeError(
+            "FFmpeg did not produce the requested frame."
+        )
+
+
+def prepare_video_frames(path):
+    """
+    Return the cached first and middle frames.
+
+    On a cache miss, extract both frames once and store
+    them locally for future wallpaper changes.
+    """
+
+    info = video_cache_info(path)
+
+    if video_cache_valid(path):
+        return (
+            info["first"],
+            info["middle"],
+        )
+
+    VIDEO_CACHE_ROOT.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    duration = video_duration(
+        path
+    )
+
+    # Keep the middle frame away from the exact EOF.
+    middle_timestamp = min(
+        duration * 0.5,
+        max(duration - 0.001, 0),
+    )
+
+    with tempfile.TemporaryDirectory(
+        dir=VIDEO_CACHE_ROOT,
+        prefix=f".{info['key']}-",
+    ) as temporary:
+
+        temporary_dir = Path(
+            temporary
+        )
+
+        first_temp = (
+            temporary_dir
+            / "first.png"
+        )
+
+        middle_temp = (
+            temporary_dir
+            / "middle.png"
+        )
+
+        metadata_temp = (
+            temporary_dir
+            / "metadata.json"
+        )
+
+        extract_video_frame(
+            path,
+            0.0,
+            first_temp,
+        )
+
+        extract_video_frame(
+            path,
+            middle_timestamp,
+            middle_temp,
+        )
+
+        metadata_temp.write_text(
+            json.dumps(
+                {
+                    "version":
+                        VIDEO_CACHE_VERSION,
+                    "path":
+                        str(info["path"]),
+                    "mtime_ns":
+                        info["mtime_ns"],
+                    "size":
+                        info["size"],
+                    "duration":
+                        duration,
+                },
+                indent=2,
+            )
+            + "\n"
+        )
+
+        # Replace any stale cache atomically at directory level.
+        if info["directory"].exists():
+            shutil.rmtree(
+                info["directory"]
+            )
+
+        temporary_dir.rename(
+            info["directory"]
+        )
+
+    return (
+        info["first"],
+        info["middle"],
+    )
+
 
 def create_presentation_frame(path):
     """
-    Create a full-resolution static presentation frame for
-    animated wallpapers.
+    Create a static presentation image.
 
-    Static wallpapers are returned unchanged.
+    Static images are returned unchanged.
 
-    GIFs use the middle frame so the same frame is also
-    represented among the distributed palette samples.
+    GIFs use their middle frame.
+
+    Videos use the cached middle frame.
     """
 
-    if path.suffix.lower() != ".gif":
+    extension = path.suffix.lower()
+
+    if extension not in {
+        ".gif",
+        *VIDEO_EXTENSIONS,
+    }:
         return path
 
-    image = Image.open(path)
+    PRESENTATION_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
-    try:
-        if not getattr(image, "is_animated", False):
-            return path
+    # -----------------------------------------------------
+    # GIF
+    # -----------------------------------------------------
 
-        frame_count = getattr(
-            image,
-            "n_frames",
-            1
+    if extension == ".gif":
+
+        image = Image.open(
+            path
         )
 
-        frame_index = round(
-            (frame_count - 1) * 0.5
+        try:
+            if not getattr(
+                image,
+                "is_animated",
+                False,
+            ):
+                return path
+
+            frame_count = getattr(
+                image,
+                "n_frames",
+                1,
+            )
+
+            frame_index = round(
+                (frame_count - 1) * 0.5
+            )
+
+            image.seek(
+                frame_index
+            )
+
+            frame = image.convert(
+                "RGB"
+            )
+
+            temporary = (
+                PRESENTATION_OUTPUT
+                .with_suffix(
+                    ".tmp.png"
+                )
+            )
+
+            frame.save(
+                temporary,
+                format="PNG",
+            )
+
+            temporary.replace(
+                PRESENTATION_OUTPUT
+            )
+
+        finally:
+            image.close()
+
+        return PRESENTATION_OUTPUT
+
+    # -----------------------------------------------------
+    # VIDEO
+    # -----------------------------------------------------
+
+    _first_frame, middle_frame = (
+        prepare_video_frames(
+            path
         )
+    )
 
-        image.seek(frame_index)
-
-        frame = image.convert("RGB")
-
-        PRESENTATION_DIR.mkdir(
-            parents=True,
-            exist_ok=True
+    temporary = (
+        PRESENTATION_OUTPUT
+        .with_suffix(
+            ".tmp.png"
         )
+    )
 
-        temporary = (
-            PRESENTATION_OUTPUT.with_suffix(".tmp.png")
-        )
+    Image.open(
+        middle_frame
+    ).save(
+        temporary,
+        format="PNG",
+    )
 
-        frame.save(
-            temporary,
-            format="PNG"
-        )
-
-        temporary.replace(
-            PRESENTATION_OUTPUT
-        )
-
-    finally:
-        image.close()
+    temporary.replace(
+        PRESENTATION_OUTPUT
+    )
 
     return PRESENTATION_OUTPUT
 
@@ -405,11 +723,77 @@ def load_wallpaper(path):
     Static images follow the original path.
 
     Animated GIFs are sampled at evenly distributed
-    points in the animation. Each sampled frame is
-    resized to the same analysis size and placed into
-    one analysis image so every sampled frame has equal
-    weight during color extraction.
+    points in the animation.
+
+    Videos are sampled at evenly distributed timestamps.
     """
+
+    extension = path.suffix.lower()
+
+    # -----------------------------------------------------
+    # VIDEO
+    # -----------------------------------------------------
+
+    if extension in VIDEO_EXTENSIONS:
+
+        first_frame, middle_frame = (
+            prepare_video_frames(
+                path
+            )
+        )
+
+        frames = []
+
+        for frame_path in (
+            first_frame,
+            middle_frame,
+        ):
+
+            frame = Image.open(
+                frame_path
+            ).convert(
+                "RGB"
+            )
+
+            frame = frame.resize(
+                (
+                    VIDEO_ANALYSIS_SIZE,
+                    VIDEO_ANALYSIS_SIZE,
+                ),
+                Image.Resampling.LANCZOS,
+            )
+
+            frames.append(
+                frame
+            )
+
+        analysis = Image.new(
+            "RGB",
+            (
+                VIDEO_ANALYSIS_SIZE,
+                VIDEO_ANALYSIS_SIZE * 2,
+            ),
+        )
+
+        for position, frame in enumerate(
+            frames
+        ):
+
+            analysis.paste(
+                frame,
+                (
+                    0,
+                    position * VIDEO_ANALYSIS_SIZE,
+                ),
+            )
+
+            frame.close()
+
+        return analysis
+
+    # -----------------------------------------------------
+    # IMAGE / GIF
+    # -----------------------------------------------------
 
     image = Image.open(path)
 
@@ -417,13 +801,20 @@ def load_wallpaper(path):
     # STATIC IMAGE
     # -----------------------------------------------------
 
-    if not getattr(image, "is_animated", False):
-        image = image.convert("RGB")
+    if not getattr(
+        image,
+        "is_animated",
+        False,
+    ):
+
+        image = image.convert(
+            "RGB"
+        )
 
         image.thumbnail(
             (
                 IMAGE_SIZE,
-                IMAGE_SIZE
+                IMAGE_SIZE,
             )
         )
 
@@ -436,12 +827,12 @@ def load_wallpaper(path):
     frame_count = getattr(
         image,
         "n_frames",
-        1
+        1,
     )
 
     sample_count = min(
         GIF_FRAME_COUNT,
-        frame_count
+        frame_count,
     )
 
     if sample_count == 1:
@@ -449,29 +840,37 @@ def load_wallpaper(path):
     else:
         indices = [
             round(
-                i * (frame_count - 1) /
-                (sample_count - 1)
+                i * (frame_count - 1)
+                / (sample_count - 1)
             )
-            for i in range(sample_count)
+            for i in range(
+                sample_count
+            )
         ]
 
     frames = []
 
     for index in indices:
 
-        image.seek(index)
+        image.seek(
+            index
+        )
 
-        frame = image.convert("RGB")
+        frame = image.convert(
+            "RGB"
+        )
 
         frame = frame.resize(
             (
                 GIF_ANALYSIS_SIZE,
-                GIF_ANALYSIS_SIZE
+                GIF_ANALYSIS_SIZE,
             ),
-            Image.Resampling.LANCZOS
+            Image.Resampling.LANCZOS,
         )
 
-        frames.append(frame.copy())
+        frames.append(
+            frame.copy()
+        )
 
     image.close()
 
@@ -482,19 +881,23 @@ def load_wallpaper(path):
         "RGB",
         (
             GIF_ANALYSIS_SIZE,
-            GIF_ANALYSIS_SIZE * len(frames)
-        )
+            GIF_ANALYSIS_SIZE * len(frames),
+        ),
     )
 
-    for position, frame in enumerate(frames):
+    for position, frame in enumerate(
+        frames
+    ):
 
         analysis.paste(
             frame,
             (
                 0,
-                position * GIF_ANALYSIS_SIZE
+                position * GIF_ANALYSIS_SIZE,
             )
         )
+
+        frame.close()
 
     return analysis
 
@@ -600,16 +1003,7 @@ def select_accent(colors):
 
         rgb = color["rgb"]
 
-        b = brightness(rgb)
         s = saturation(rgb)
-
-        # Ignore almost-black and almost-white colors.
-        if b < 35 or b > 230:
-            continue
-
-        # Ignore extremely desaturated colors.
-        if s < 0.15:
-            continue
 
         score = (
             s * 2.5 +
@@ -632,18 +1026,26 @@ def select_accent(colors):
 
         return candidates[0][1]
 
-    # Fallback
-    return (
-        80,
-        120,
-        120
-    )
+    return colors[0]["rgb"]
 
 
 def select_secondary(
     colors,
-    accent
+    accent,
+    additional_avoid=(),
 ):
+    """
+    Select another actual wallpaper-derived color.
+
+    Color distance is a preference rather than a hard cutoff,
+    so monochromatic wallpapers can still provide several
+    related shades.
+    """
+
+    avoid = [
+        accent,
+        *additional_avoid,
+    ]
 
     candidates = []
 
@@ -651,24 +1053,22 @@ def select_secondary(
 
         rgb = color["rgb"]
 
-        if distance(
-            rgb,
-            accent
-        ) < 70:
-
+        if rgb in avoid:
             continue
 
-        b = brightness(rgb)
         s = saturation(rgb)
 
-        if b < 35 or b > 230:
-            continue
-
-        if s < 0.15:
-            continue
+        nearest_distance = min(
+            distance(
+                rgb,
+                other
+            )
+            for other in avoid
+        )
 
         score = (
-            s +
+            nearest_distance / 255 * 2.0 +
+            s * 1.5 +
             color["count"] / 20000
         )
 
@@ -698,87 +1098,63 @@ def select_secondary(
 def choose_contrasting_accent(
     colors,
     reference,
-    prefer_dark
+    prefer_dark,
+    minimum_ratio=4.0,
 ):
     """
-    Choose a wallpaper-derived accent that has enough
-    contrast against the reference color.
+    Choose an actual wallpaper-derived color with useful
+    contrast against the reference.
 
-    Used primarily for elements directly touching
-    the wallpaper, such as active workspaces.
+    Saturation is never required. Neutral wallpaper colors are
+    valid accents for neutral wallpapers.
+
+    Existing extracted colors are always preferred over
+    synthesized colors.
     """
 
-    candidates = []
+    candidates = [
+        color
+        for color in colors
+        if 35 <= brightness(color["rgb"]) <= 230
+    ]
 
-    for color in colors:
+    if not candidates:
+        return colors[0]["rgb"]
 
-        rgb = color["rgb"]
-
-        s = saturation(rgb)
-        b = brightness(rgb)
-
-        if s < 0.25:
-            continue
-
-        if prefer_dark:
-
-            if b > 130:
-                continue
-
-        else:
-
-            if b < 100:
-                continue
-
-        ratio = contrast_ratio(
-            rgb,
+    valid = [
+        color
+        for color in candidates
+        if contrast_ratio(
+            color["rgb"],
             reference
-        )
+        ) >= minimum_ratio
+    ]
 
-        score = (
-            ratio * 3.0 +
-            s * 2.0 +
-            color["count"] / 10000
-        )
-
-        candidates.append(
-            (
-                score,
-                ratio,
-                rgb
-            )
-        )
-
-    candidates.sort(
-        key=lambda x: x[0],
-        reverse=True
+    pool = (
+        valid
+        if valid
+        else candidates
     )
-
-    # WCAG AA-ish threshold.
-    for _, ratio, rgb in candidates:
-
-        if ratio >= 4.0:
-            return rgb
-
-    # No extracted color was suitable.
-    # Synthesize an accent from the most saturated
-    # wallpaper color.
-    source = max(
-        colors,
-        key=lambda c: saturation(
-            c["rgb"]
-        )
-    )["rgb"]
 
     if prefer_dark:
 
-        return make_dark_accent(
-            source
-        )
+        return min(
+            pool,
+            key=lambda color: (
+                brightness(color["rgb"]),
+                -saturation(color["rgb"]),
+                -color["count"],
+            )
+        )["rgb"]
 
-    return make_bright_accent(
-        source
-    )
+    return max(
+        pool,
+        key=lambda color: (
+            brightness(color["rgb"]),
+            saturation(color["rgb"]),
+            color["count"],
+        )
+    )["rgb"]
 
 
 # =========================================================
@@ -828,56 +1204,21 @@ def build_theme(colors):
     )
 
     # -----------------------------------------------------
-    # ACCENT FOR SURFACES TOUCHING WALLPAPER
+    # ACCENT FOR UI SURFACES / BORDERS
     #
-    # Example:
-    # active workspace button
+    # This color is used by Waybar, Hyprland borders and
+    # Ghostty UI elements, so its contrast is evaluated
+    # against the dark UI rather than the wallpaper.
     #
-    # A light wallpaper gets a dark accent.
-    # A dark wallpaper gets a bright accent.
+    # The color itself still comes from the wallpaper palette.
     # -----------------------------------------------------
 
-    if wallpaper_is_light:
-
-        accent_surface = (
-            choose_contrasting_accent(
-                colors,
-                wallpaper_base,
-                prefer_dark=True
-            )
-        )
-
-    else:
-
-        accent_surface = (
-            choose_contrasting_accent(
-                colors,
-                wallpaper_base,
-                prefer_dark=False
-            )
-        )
-
-    # Guarantee sufficient contrast against wallpaper.
-    if contrast_ratio(
-        accent_surface,
-        wallpaper_base
-    ) < 4.0:
-
-        if wallpaper_is_light:
-
-            accent_surface = (
-                35,
-                65,
-                68
-            )
-
-        else:
-
-            accent_surface = (
-                100,
-                180,
-                180
-            )
+    accent_surface = choose_contrasting_accent(
+        colors,
+        surface,
+        prefer_dark=wallpaper_is_light,
+        minimum_ratio=3.0
+    )
 
     # -----------------------------------------------------
     # PRIMARY ACCENT FOR TEXT / ICONS
@@ -887,21 +1228,15 @@ def build_theme(colors):
         colors
     )
 
-    accent = make_bright_accent(
-        raw_accent
+    # Keep the extracted wallpaper color unchanged when it
+    # already meets the UI contrast requirement. Otherwise,
+    # adjust only that color's HSV value/saturation while
+    # preserving its hue.
+    accent = adjust_contrast_preserve_hue(
+        raw_accent,
+        surface,
+        minimum_ratio=4.5
     )
-
-    # Ensure readability against dark surfaces.
-    if contrast_ratio(
-        accent,
-        surface
-    ) < 4.5:
-
-        accent = (
-            210,
-            225,
-            220
-        )
 
     # -----------------------------------------------------
     # SECONDARY ACCENT
@@ -912,47 +1247,31 @@ def build_theme(colors):
         raw_accent
     )
 
-    accent_secondary = (
-        make_bright_accent(
-            raw_secondary
-        )
+    accent_secondary = adjust_contrast_preserve_hue(
+        raw_secondary,
+        surface,
+        minimum_ratio=4.5
     )
-
-    if contrast_ratio(
-        accent_secondary,
-        surface
-    ) < 4.5:
-
-        accent_secondary = (
-            180,
-            210,
-            205
-        )
 
     # -----------------------------------------------------
     # TERTIARY ACCENT
     # -----------------------------------------------------
 
-    accent_tertiary = shift_hue(
-        accent,
-        0.08
-    )
-
-    accent_tertiary = boost_saturation(
-        accent_tertiary,
-        0.10
-    )
-
-    if contrast_ratio(
-        accent_tertiary,
-        surface
-    ) < 4.5:
-
-        accent_tertiary = (
-            195,
-            215,
-            210
+    # Select a third actual wallpaper color instead of rotating
+    # the primary accent into an unrelated hue.
+    raw_tertiary = select_secondary(
+        colors,
+        raw_accent,
+        additional_avoid=(
+            raw_secondary,
         )
+    )
+
+    accent_tertiary = adjust_contrast_preserve_hue(
+        raw_tertiary,
+        surface,
+        minimum_ratio=4.5
+    )
 
     # -----------------------------------------------------
     # HOVER / ACTIVE

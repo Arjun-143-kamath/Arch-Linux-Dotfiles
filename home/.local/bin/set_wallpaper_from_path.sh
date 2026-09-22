@@ -34,9 +34,15 @@ printf '%s\n' "$WALL" > "$STATE_FILE"
 # DISPLAY
 # =========================================================
 
-awww img "$WALL" \
-    --transition-type fade \
-    --transition-fps 60
+WALLPAPER_RENDERER="$HOME/.local/bin/walltheme-renderer.sh"
+
+if [ ! -x "$WALLPAPER_RENDERER" ]; then
+    echo "Wallpaper renderer not found:"
+    echo "  $WALLPAPER_RENDERER"
+    exit 1
+fi
+
+"$WALLPAPER_RENDERER" "$WALL"
 
 # =========================================================
 # THEME GENERATION
