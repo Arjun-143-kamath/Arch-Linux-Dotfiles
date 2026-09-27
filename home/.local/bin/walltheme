@@ -38,7 +38,7 @@ echo
 # 1. EXTRACT PALETTE
 # =========================================================
 
-echo "[1/7] Extracting colors..."
+echo "[1/9] Extracting colors..."
 
 python \
   "$WALLTHEME/walltheme.py" \
@@ -75,11 +75,20 @@ python \
   "$WALLTHEME/generate-hyprlock.py"
 
 # =========================================================
-# 5. RELOAD HYPRLAND
+# 5. GENERATE BTOP
 # =========================================================
 
 echo
-echo "[5/7] Reloading Hyprland..."
+echo "[5/9] Generating btop theme..."
+
+python   "$WALLTHEME/generate-btop.py"
+
+# =========================================================
+# 6. RELOAD HYPRLAND
+# =========================================================
+
+echo
+echo "[6/9] Reloading Hyprland..."
 
 if command -v hyprctl >/dev/null 2>&1; then
   hyprctl reload
@@ -93,7 +102,7 @@ fi
 # =========================================================
 
 echo
-echo "[6/7] Reloading Ghostty..."
+echo "[7/9] Reloading Ghostty..."
 
 GHOSTTY_PIDS=$(pgrep -x ghostty 2>/dev/null || true)
 
@@ -126,13 +135,47 @@ fi
 # =========================================================
 
 echo
-echo "[7/7] Reloading Waybar..."
+echo "[8/9] Reloading Waybar..."
 
 if pgrep -x waybar >/dev/null 2>&1; then
   pkill waybar
 fi
 
 waybar >/dev/null 2>&1 &
+
+# =========================================================
+# 9. RELOAD BTOP
+#
+# Btop can reload its configuration and theme with SIGUSR2.
+# =========================================================
+
+echo
+echo "[9/9] Reloading btop..."
+
+BTOP_PIDS=$(pgrep -x btop 2>/dev/null || true)
+
+if [ -n "$BTOP_PIDS" ]; then
+
+  while read -r PID; do
+
+    if [ -n "$PID" ]; then
+
+      kill -USR2 "$PID" 2>/dev/null || true
+
+      echo         "Reload signal sent → btop PID $PID"
+
+    fi
+
+  done <<<"$BTOP_PIDS"
+
+  echo "btop configuration reloaded."
+
+else
+
+  echo "No running btop instance found."
+  echo "New btop instances will use the generated theme."
+
+fi
 
 # =========================================================
 # DONE
