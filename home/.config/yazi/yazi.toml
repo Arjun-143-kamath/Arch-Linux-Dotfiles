@@ -1,13 +1,31 @@
 [opener]
+
 image = [
-    { run = 'viewnior "$@"', orphan = true, for = "unix" },
+    { run = 'viewnior %s', orphan = true, for = "unix" },
 ]
 
 pdf = [
-    { run = 'mupdf "$@"', orphan = true, for = "unix" },
+    { run = 'mupdf %s', orphan = true, for = "unix" },
+]
+
+video = [
+    { run = 'mpv %s', orphan = true, for = "unix" },
+]
+
+browser = [
+    { run = 'app.zen_browser.zen %s', orphan = true, for = "unix" },
+]
+
+edit = [
+    { run = 'nvim %s', block = true, for = "unix" },
 ]
 
 [open]
-rules = [
-    { mime = "application/pdf", use = "pdf" },
+
+prepend_rules = [
+    { url = "*.{png,jpg,jpeg,gif,webp,bmp}", use = "image" },
+    { url = "*.pdf", use = "pdf" },
+    { url = "*.{mp4,mkv,webm,avi,mov}", use = "video" },
+    { url = "*.html", use = "browser" },
+    { url = "*.{md,txt}", use = "edit" },
 ]
