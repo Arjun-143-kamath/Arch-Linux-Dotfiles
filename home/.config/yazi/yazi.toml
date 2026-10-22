@@ -9,7 +9,7 @@ pdf = [
 ]
 
 video = [
-    { run = 'mpv %s', orphan = true, for = "unix" },
+    { run = 'vlc %s', orphan = true, for = "unix" },
 ]
 
 browser = [
