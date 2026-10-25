@@ -1,5 +1,4 @@
 affinity-appimage-bin
-antigravity-appimage
 dnslookup
 enum4linux
 figma-agent-linux
@@ -19,10 +18,3 @@ rapidraw
 sklauncher-bin
 spotify
 syncthing-bin
-tlauncher-installer
-tmog-bin
-torlink
-visual-studio-code-bin
-webtorrent-cli
-wlogout
-yay

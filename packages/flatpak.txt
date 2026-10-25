@@ -1,3 +1,4 @@
+ai.storyteller.artcraft-launcher
 app.zen_browser.zen
 com.github.wwmm.easyeffects
 com.heroicgameslauncher.hgl

@@ -19,6 +19,8 @@ discord
 diskonaut
 dmidecode
 dnsmasq
+docker
+docker-compose
 dog
 edk2-ovmf
 efibootmgr
@@ -32,6 +34,7 @@ ghostscript
 ghostty
 git
 github-cli
+gloobus-preview
 gnome-keyring
 gnome-themes-extra
 greetd
@@ -51,6 +54,7 @@ inkscape
 intel-ucode
 iwd
 jdk-openjdk
+kcalc
 kew
 kitty
 lazygit
@@ -66,6 +70,7 @@ metasploit
 mingw-w64-gcc
 mupdf
 mupdf-tools
+nautilus
 nbtscan
 neovim
 networkmanager
@@ -81,6 +86,7 @@ php
 pipewire-pulse
 power-profiles-daemon
 python-pynvim
+qalculate-qt
 qemu-full
 qemu-img
 qt5ct
@@ -98,6 +104,7 @@ slurp
 sof-firmware
 steam
 sudo
+sushi
 swaybg
 swtpm
 tectonic
@@ -106,6 +113,7 @@ thunar
 thunar-media-tags-plugin
 thunar-shares-plugin
 thunar-volman
+tldr
 tlp
 tree
 ttf-jetbrains-mono
@@ -127,6 +135,7 @@ wf-recorder
 wget
 whois
 wireshark-qt
+xdg-desktop-portal-hyprland
 xorg-xrdb
 xorg-xsetroot
 yazi
