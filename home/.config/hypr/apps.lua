@@ -19,6 +19,8 @@ local M = {
 	tmenu = "ghostty -e tux",
 	tclock = "ghostty -e tty-clock -scB",
 	toggle_waybar = "~/.local/bin/toggle_Waybar.sh",
+	wallpicker = "~/.local/bin/wallpaper-picker",
+	toggle_quickshell = "~/.local/bin/toggle_quickshell.sh",
 }
 
 return M
