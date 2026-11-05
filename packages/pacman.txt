@@ -26,6 +26,7 @@ edk2-ovmf
 efibootmgr
 fastfetch
 fd
+ffmpeg
 firefox
 flatpak
 fuse2

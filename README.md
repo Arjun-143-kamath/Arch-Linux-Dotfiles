@@ -255,6 +255,17 @@ It:
 
 Supported image formats include PNG, JPEG, WebP, and AVIF.
 
+## Wallpaper Picker
+
+Press `SUPER + ALT + P` to open the wallpaper picker. It lists the supported
+files in `~/Wall`, outlines the active wallpaper, and applies the selection
+through `set_wallpaper_from_path.sh`. This preserves the existing transition,
+dynamic theme generation, Hyprlock, and SDDM synchronization.
+
+Static wallpapers appear as images. GIF and video wallpapers appear as
+looping previews without media-player controls so they can be distinguished
+before selection.
+
 ---
 
 # Hyprlock Synchronization

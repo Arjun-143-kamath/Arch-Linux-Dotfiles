@@ -1,0 +1,819 @@
+#!/usr/bin/gjs -m
+
+import Gio from "gi://Gio";
+import Gdk from "gi://Gdk?version=4.0";
+import GdkPixbuf from "gi://GdkPixbuf?version=2.0";
+import GLib from "gi://GLib";
+import GObject from "gi://GObject";
+import Gtk from "gi://Gtk?version=4.0";
+
+const home = GLib.get_home_dir();
+const configPath = GLib.build_filenamev([home, ".config", "walltheme", "config"]);
+const statePath = GLib.build_filenamev([home, ".local", "state", "walltheme", "current_wallpaper"]);
+const setterPath = GLib.build_filenamev([home, ".local", "bin", "set_wallpaper_from_path.sh"]);
+const previewCacheDirectory = GLib.build_filenamev([home, ".cache", "wallpaper-picker"]);
+const imageExtensions = new Set(["png", "jpg", "jpeg", "webp", "avif", "gif"]);
+const videoExtensions = new Set(["mp4", "webm", "mkv"]);
+
+function readText(path) {
+    try {
+        const [ok, bytes] = GLib.file_get_contents(path);
+        return ok ? new TextDecoder().decode(bytes) : "";
+    } catch (_) {
+        return "";
+    }
+}
+
+function wallpaperDirectory() {
+    const config = readText(configPath);
+    const match = config.match(/^WALLPAPER_DIR=["']?([^"'\n]+)["']?/m);
+    const configured = match ? match[1].trim() : "$HOME/Wall";
+
+    return configured
+        .replace(/^~(?=\/|$)/, home)
+        .replace(/\$HOME|\$\{HOME\}/g, home);
+}
+
+function currentWallpaper() {
+    return readText(statePath).trim();
+}
+
+function wallpaperFiles(directory) {
+    const files = [];
+    let handle;
+
+    try {
+        handle = GLib.Dir.open(directory, 0);
+        let name;
+
+        while ((name = handle.read_name()) !== null) {
+            const extension = name.split(".").pop().toLowerCase();
+            const path = GLib.build_filenamev([directory, name]);
+
+            if ((imageExtensions.has(extension) || videoExtensions.has(extension)) && GLib.file_test(path, GLib.FileTest.IS_REGULAR)) {
+                files.push(path);
+            }
+        }
+    } catch (_) {
+        return [];
+    } finally {
+        if (handle) {
+            handle.close();
+        }
+    }
+
+    return files.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+function isVideo(path) {
+    return videoExtensions.has(path.split(".").pop().toLowerCase());
+}
+
+function isAnimated(path) {
+    return isVideo(path) || path.split(".").pop().toLowerCase() === "gif";
+}
+
+function previewCachePath(path) {
+    const key = GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, path, -1).slice(0, 16);
+    return GLib.build_filenamev([previewCacheDirectory, `${key}.gif`]);
+}
+
+function thumbnailCachePath(path) {
+    const key = GLib.compute_checksum_for_string(GLib.ChecksumType.SHA256, path, -1).slice(0, 16);
+    return GLib.build_filenamev([previewCacheDirectory, `${key}-thumb.png`]);
+}
+
+function playCachedPreview(picture, previewPath, fallbackThumbPath) {
+    try {
+        const animation = GdkPixbuf.PixbufAnimation.new_from_file(previewPath);
+        const iterator = animation.get_iter(null);
+        let sourceId = 0;
+        let stopped = false;
+
+        const showFrame = () => {
+            if (stopped) {
+                return;
+            }
+            picture.set_paintable(Gdk.Texture.new_for_pixbuf(iterator.get_pixbuf()));
+            const delay = Math.max(iterator.get_delay_time(), 20);
+            iterator.advance(null);
+            sourceId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+                showFrame();
+                return GLib.SOURCE_REMOVE;
+            });
+        };
+
+        showFrame();
+        return () => {
+            stopped = true;
+            if (sourceId) {
+                GLib.Source.remove(sourceId);
+            }
+            if (fallbackThumbPath && GLib.file_test(fallbackThumbPath, GLib.FileTest.IS_REGULAR)) {
+                picture.set_file(Gio.File.new_for_path(fallbackThumbPath));
+            } else {
+                picture.set_file(Gio.File.new_for_path(previewPath));
+            }
+        };
+    } catch (_) {
+        // Keep the card selectable if a video preview cannot be decoded.
+        return null;
+    }
+}
+
+function loadVideoThumbnail(path, onReady) {
+    GLib.mkdir_with_parents(previewCacheDirectory, 0o755);
+
+    const thumbPath = thumbnailCachePath(path);
+
+    if (GLib.file_test(thumbPath, GLib.FileTest.IS_REGULAR)) {
+        onReady(thumbPath);
+        return;
+    }
+
+    try {
+        const process = Gio.Subprocess.new([
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-ss", "1", "-i", path,
+            "-frames:v", "1", thumbPath,
+        ], Gio.SubprocessFlags.STDERR_SILENCE);
+
+        process.wait_async(null, (completed, result) => {
+            try {
+                completed.wait_finish(result);
+                if (completed.get_successful() && GLib.file_test(thumbPath, GLib.FileTest.IS_REGULAR)) {
+                    onReady(thumbPath);
+                    return;
+                }
+            } catch (_) {}
+
+            try {
+                const fallback = Gio.Subprocess.new([
+                    "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+                    "-ss", "0", "-i", path,
+                    "-frames:v", "1", thumbPath,
+                ], Gio.SubprocessFlags.STDERR_SILENCE);
+
+                fallback.wait_async(null, (fallbackCompleted, fallbackResult) => {
+                    try {
+                        fallbackCompleted.wait_finish(fallbackResult);
+                        if (fallbackCompleted.get_successful() && GLib.file_test(thumbPath, GLib.FileTest.IS_REGULAR)) {
+                            onReady(thumbPath);
+                        }
+                    } catch (_) {}
+                });
+            } catch (_) {}
+        });
+    } catch (_) {}
+}
+
+function loadVideoPreview(path, onReady) {
+    GLib.mkdir_with_parents(previewCacheDirectory, 0o755);
+
+    const previewPath = previewCachePath(path);
+
+    if (GLib.file_test(previewPath, GLib.FileTest.IS_REGULAR)) {
+        onReady(previewPath);
+        return;
+    }
+
+    try {
+        const process = Gio.Subprocess.new([
+            "ffmpeg", "-hide_banner", "-loglevel", "error", "-y",
+            "-ss", "0", "-t", "3", "-i", path,
+            "-vf", "fps=10,scale=440:-2:flags=lanczos",
+            "-loop", "0", previewPath,
+        ], Gio.SubprocessFlags.STDERR_SILENCE);
+
+        process.wait_async(null, (completed, result) => {
+            try {
+                completed.wait_finish(result);
+                if (completed.get_successful()) {
+                    onReady(previewPath);
+                }
+            } catch (_) {
+                // A broken video leaves its card selectable without a preview.
+            }
+        });
+    } catch (_) {
+        // FFmpeg is tracked in the package manifest. Keep the card usable if
+        // it is temporarily unavailable.
+    }
+}
+
+function preloadWallpaperAccents(paths, onReady) {
+    const script = `
+import importlib.util
+import json
+from pathlib import Path
+import sys
+
+module_path = Path.home() / ".config" / "walltheme" / "walltheme.py"
+spec = importlib.util.spec_from_file_location("walltheme", module_path)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+
+results = {}
+for raw_path in sys.argv[1:]:
+    path = Path(raw_path).resolve()
+    try:
+        image = module.load_wallpaper(path)
+        try:
+            accent = module.build_theme(module.extract_colors(image))["accent_surface"]
+        finally:
+            image.close()
+
+        thumbnail = None
+        if path.suffix.lower() in module.VIDEO_EXTENSIONS:
+            try:
+                _first, middle = module.prepare_video_frames(path)
+                if middle.is_file():
+                    thumbnail = str(middle)
+            except Exception:
+                pass
+
+        entry = {
+            "accent": accent,
+            "thumbnail": thumbnail,
+        }
+        results[raw_path] = entry
+        results[str(path)] = entry
+    except Exception:
+        continue
+
+print(json.dumps(results))
+`;
+
+    try {
+        const process = Gio.Subprocess.new(
+            ["python3", "-c", script, ...paths],
+            Gio.SubprocessFlags.STDOUT_PIPE | Gio.SubprocessFlags.STDERR_SILENCE,
+        );
+        process.communicate_utf8_async(null, null, (completed, result) => {
+            try {
+                const [, output] = completed.communicate_utf8_finish(result);
+                const metadata = JSON.parse(output);
+                onReady(metadata);
+            } catch (_) {
+                onReady({});
+            }
+        });
+    } catch (_) {
+        onReady({});
+    }
+}
+
+function rgba(hex, alpha) {
+    const value = hex.slice(1);
+    const red = Number.parseInt(value.slice(0, 2), 16);
+    const green = Number.parseInt(value.slice(2, 4), 16);
+    const blue = Number.parseInt(value.slice(4, 6), 16);
+    return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
+}
+
+const css = `
+window {
+    background: #07080a;
+    color: #e8eaed;
+}
+.backdrop {
+    opacity: 0.28;
+}
+.scrim {
+    background: linear-gradient(120deg, rgba(5, 6, 8, 0.94), rgba(8, 9, 12, 0.72));
+}
+.dashboard {
+    padding: 42px 54px;
+}
+.title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.app-heading {
+    font-size: 24px;
+    font-weight: 700;
+}
+.nav-item {
+    color: #aeb4bb;
+    font-size: 14px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+}
+.nav-item.active {
+    color: #ffffff;
+    font-weight: 700;
+    border: 1px solid #dce5f0;
+    border-radius: 999px;
+    padding: 7px 12px;
+}
+.carousel {
+    padding: 8px 2px;
+}
+.selection-title {
+    font-size: 34px;
+    font-weight: 700;
+}
+.selection-meta {
+    color: #b4bac2;
+    font-size: 14px;
+}
+.wall-card {
+    padding: 0;
+    border-radius: 10px;
+    border: 2px solid rgba(255, 255, 255, 0.10);
+    background: rgba(28, 32, 36, 0.86);
+    box-shadow: none;
+}
+.wall-card:hover, .wall-card.selected {
+    border-color: #f2f5fa;
+}
+.wall-card.selected {
+    border-width: 4px;
+}
+.wall-card.current {
+    border-color: #8de0bc;
+}
+.wall-card.current.selected {
+    border-color: #d4b7ff;
+}
+.video-badge, .current-badge {
+    background: rgba(15, 18, 20, 0.82);
+    color: #ffffff;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 7px;
+    border-radius: 7px;
+}
+.current-badge {
+    background: rgba(31, 113, 75, 0.92);
+}
+.filename-overlay {
+    background: linear-gradient(transparent, rgba(5, 6, 8, 0.88));
+    color: #e8eaed;
+    padding: 20px 10px 8px;
+    font-size: 13px;
+}
+.action-row button {
+    border-radius: 999px;
+    padding: 7px 16px;
+}
+`;
+
+const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.Application {
+    constructor() {
+        // A keybind must always start the current script. Do not let an older
+        // picker process absorb the activation over D-Bus.
+        super({
+            application_id: "com.ark.wallpaperpicker",
+            flags: Gio.ApplicationFlags.NON_UNIQUE,
+        });
+        this.selection = null;
+        this.allWallpapers = [];
+        this.wallpapers = [];
+        this.cards = new Map();
+        this.videoCards = new Map();
+        this.carouselAnimationId = 0;
+        this.activeFilter = "all";
+        this.filterButtons = new Map();
+        this.accentCache = new Map();
+        this.thumbnailCache = new Map();
+        this.activeWallpaper = currentWallpaper();
+    }
+
+    vfunc_activate() {
+        if (this.window) {
+            this.window.present();
+            return;
+        }
+
+        const provider = new Gtk.CssProvider();
+        provider.load_from_string(css);
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+        this.accentProvider = new Gtk.CssProvider();
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            this.accentProvider,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER,
+        );
+
+        this.window = new Gtk.ApplicationWindow({
+            application: this,
+            title: "Wallpaper picker",
+            default_width: 1280,
+            default_height: 720,
+        });
+        this.window.set_size_request(800, 520);
+
+        const scene = new Gtk.Overlay();
+        this.backdrop = new Gtk.Picture();
+        this.backdrop.set_content_fit(Gtk.ContentFit.COVER);
+        this.backdrop.set_hexpand(true);
+        this.backdrop.set_vexpand(true);
+        this.backdrop.add_css_class("backdrop");
+        scene.set_child(this.backdrop);
+
+        const scrim = new Gtk.Box({ hexpand: true, vexpand: true });
+        scrim.add_css_class("scrim");
+        scene.add_overlay(scrim);
+
+        const root = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 26, hexpand: true, vexpand: true });
+        root.add_css_class("dashboard");
+        scene.add_overlay(root);
+        this.window.set_child(scene);
+
+        const top = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 20 });
+        const heading = new Gtk.Label({ label: "Wallpaper selector", xalign: 0 });
+        heading.add_css_class("app-heading");
+        top.append(heading);
+
+        const navigation = new Gtk.Box({ spacing: 24 });
+        for (const [filter, label] of [["all", "All"], ["image", "Image"], ["video", "Video"]]) {
+            const item = new Gtk.Button({ label });
+            item.add_css_class("nav-item");
+            item.connect("clicked", () => this.applyFilter(filter));
+            this.filterButtons.set(filter, item);
+            navigation.append(item);
+        }
+        top.append(navigation);
+        root.append(top);
+
+        this.carousel = new Gtk.Box({ orientation: Gtk.Orientation.HORIZONTAL, spacing: 18, halign: Gtk.Align.START });
+        this.carousel.add_css_class("carousel");
+        this.carouselScroller = new Gtk.ScrolledWindow({ hexpand: true, child: this.carousel });
+        this.carouselScroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
+        this.carouselScroller.set_min_content_height(204);
+        root.append(this.carouselScroller);
+
+        const details = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6, hexpand: true });
+        this.selectionTitle = new Gtk.Label({ label: "Select a wallpaper", xalign: 0, ellipsize: 3 });
+        this.selectionTitle.add_css_class("selection-title");
+        this.selectionMeta = new Gtk.Label({ xalign: 0 });
+        this.selectionMeta.add_css_class("selection-meta");
+        details.append(this.selectionTitle);
+        details.append(this.selectionMeta);
+        root.append(details);
+
+        const footer = new Gtk.Box({ spacing: 10, halign: Gtk.Align.START });
+        footer.add_css_class("action-row");
+        const cancel = new Gtk.Button({ label: "Close" });
+        cancel.connect("clicked", () => this.quit());
+        this.apply = new Gtk.Button({ label: "Set wallpaper", sensitive: false });
+        this.apply.add_css_class("suggested-action");
+        this.apply.connect("clicked", () => this.applySelection());
+        footer.append(this.apply);
+        footer.append(cancel);
+        root.append(footer);
+
+        const files = wallpaperFiles(wallpaperDirectory());
+        this.allWallpapers = files;
+        if (files.length === 0) {
+            this.carousel.append(new Gtk.Label({ label: `No supported wallpapers found in ${wallpaperDirectory()}` }));
+        } else {
+            const loading = new Gtk.Label({ label: "Preparing wallpaper colors…" });
+            loading.add_css_class("selection-meta");
+            this.carousel.append(loading);
+
+            preloadWallpaperAccents(files, metadata => {
+                for (const [path, data] of Object.entries(metadata)) {
+                    if (!data) {
+                        continue;
+                    }
+                    if (typeof data === "string") {
+                        if (/^#[0-9a-f]{6}$/i.test(data)) {
+                            this.accentCache.set(path, data);
+                        }
+                    } else {
+                        if (data.accent && /^#[0-9a-f]{6}$/i.test(data.accent)) {
+                            this.accentCache.set(path, data.accent);
+                        }
+                        if (data.thumbnail && GLib.file_test(data.thumbnail, GLib.FileTest.IS_REGULAR)) {
+                            this.thumbnailCache.set(path, data.thumbnail);
+                        }
+                    }
+                }
+                this.carousel.remove(loading);
+                files.forEach(path => this.addCard(path));
+                this.applyFilter("all");
+            });
+        }
+
+        const escape = new Gtk.EventControllerKey();
+        escape.set_propagation_phase(Gtk.PropagationPhase.CAPTURE);
+        escape.connect("key-pressed", (_controller, keyval) => {
+            if (keyval === Gdk.KEY_Escape) {
+                this.quit();
+                return true;
+            }
+            if (keyval === Gdk.KEY_Left || keyval === Gdk.KEY_Up) {
+                this.moveSelection(-1);
+                return true;
+            }
+            if (keyval === Gdk.KEY_Right || keyval === Gdk.KEY_Down) {
+                this.moveSelection(1);
+                return true;
+            }
+            if (keyval === Gdk.KEY_Home) {
+                if (this.wallpapers.length > 0) {
+                    this.select(this.wallpapers[0]);
+                }
+                return true;
+            }
+            if (keyval === Gdk.KEY_End) {
+                if (this.wallpapers.length > 0) {
+                    this.select(this.wallpapers[this.wallpapers.length - 1]);
+                }
+                return true;
+            }
+            if (keyval === Gdk.KEY_1) {
+                this.applyFilter("all");
+                return true;
+            }
+            if (keyval === Gdk.KEY_2) {
+                this.applyFilter("image");
+                return true;
+            }
+            if (keyval === Gdk.KEY_3) {
+                this.applyFilter("video");
+                return true;
+            }
+            if (keyval === Gdk.KEY_Return || keyval === Gdk.KEY_KP_Enter) {
+                this.applySelection();
+                return true;
+            }
+            return false;
+        });
+        this.window.add_controller(escape);
+        this.window.present();
+    }
+
+    addCard(path) {
+        const file = Gio.File.new_for_path(path);
+        const overlay = new Gtk.Overlay();
+        let preview;
+
+        if (isVideo(path)) {
+            preview = new Gtk.Picture();
+            preview.set_content_fit(Gtk.ContentFit.COVER);
+            const thumb = this.thumbnailCache.get(path);
+            if (thumb && GLib.file_test(thumb, GLib.FileTest.IS_REGULAR)) {
+                preview.set_file(Gio.File.new_for_path(thumb));
+            } else {
+                loadVideoThumbnail(path, thumbPath => {
+                    this.thumbnailCache.set(path, thumbPath);
+                    if (!videoCard.previewPath) {
+                        preview.set_file(Gio.File.new_for_path(thumbPath));
+                    }
+                    if (this.selection === path) {
+                        this.updateBackdrop(path);
+                    }
+                });
+            }
+            const videoCard = { picture: preview, previewPath: null };
+            this.videoCards.set(path, videoCard);
+            loadVideoPreview(path, previewPath => {
+                videoCard.previewPath = previewPath;
+                this.syncVideoPreview(path);
+                if (this.selection === path) {
+                    this.updateBackdrop(path);
+                }
+            });
+        } else {
+            preview = Gtk.Picture.new_for_file(file);
+            preview.set_content_fit(Gtk.ContentFit.COVER);
+        }
+
+        preview.set_hexpand(true);
+        preview.set_vexpand(true);
+        overlay.set_child(preview);
+
+        if (isAnimated(path)) {
+            const badge = new Gtk.Label({ label: isVideo(path) ? "VIDEO" : "GIF", halign: Gtk.Align.START, valign: Gtk.Align.START });
+            badge.add_css_class("video-badge");
+            badge.set_margin_top(8);
+            badge.set_margin_start(8);
+            overlay.add_overlay(badge);
+        }
+        const filename = GLib.path_get_basename(path);
+        const label = new Gtk.Label({ label: filename, ellipsize: 3, xalign: 0.5, halign: Gtk.Align.FILL, valign: Gtk.Align.END });
+        label.add_css_class("filename-overlay");
+        overlay.add_overlay(label);
+
+        const button = new Gtk.Button({ child: overlay, tooltip_text: path });
+        button.set_size_request(224, 126);
+        button.add_css_class("wall-card");
+        if (path === this.activeWallpaper) {
+            button.add_css_class("current");
+            const current = new Gtk.Label({ label: "CURRENT", halign: Gtk.Align.END, valign: Gtk.Align.START });
+            current.add_css_class("current-badge");
+            current.set_margin_top(8);
+            current.set_margin_end(8);
+            overlay.add_overlay(current);
+        }
+        button.connect("clicked", () => this.select(path));
+        this.cards.set(path, button);
+        this.carousel.append(button);
+        if (isVideo(path)) {
+            this.syncVideoPreview(path);
+        }
+    }
+
+    select(path) {
+        this.selection = path;
+        for (const [cardPath, card] of this.cards) {
+            card.remove_css_class("selected");
+            if (cardPath === path) {
+                card.add_css_class("selected");
+                card.set_size_request(320, 180);
+            } else {
+                card.set_size_request(224, 126);
+            }
+        }
+        const filename = GLib.path_get_basename(path);
+        this.selectionTitle.set_label(filename.replace(/\.[^.]+$/, ""));
+        this.selectionMeta.set_label(path === this.activeWallpaper ? "Current wallpaper" : (isVideo(path) ? "Live wallpaper · video preview" : "Static wallpaper"));
+        this.apply.set_sensitive(path !== this.activeWallpaper);
+        this.apply.set_label(path === this.activeWallpaper ? "Current wallpaper" : "Set wallpaper");
+        this.updateBackdrop(path);
+        this.updateAccent(path);
+        this.centerSelection();
+    }
+
+    moveSelection(delta) {
+        if (!this.selection || this.wallpapers.length === 0) {
+            return;
+        }
+        const current = this.wallpapers.indexOf(this.selection);
+        const next = (current + delta + this.wallpapers.length) % this.wallpapers.length;
+        this.select(this.wallpapers[next]);
+    }
+
+    applyFilter(filter) {
+        this.activeFilter = filter;
+        this.wallpapers = this.allWallpapers.filter(path =>
+            filter === "all" || (filter === "video" ? isVideo(path) : !isVideo(path)),
+        );
+
+        for (const [name, button] of this.filterButtons) {
+            button.remove_css_class("active");
+            if (name === filter) {
+                button.add_css_class("active");
+            }
+        }
+
+        for (const [path, card] of this.cards) {
+            const visible = this.wallpapers.includes(path);
+            card.set_visible(visible);
+            this.syncVideoPreview(path);
+        }
+
+        if (this.wallpapers.length === 0) {
+            this.selection = null;
+            this.selectionTitle.set_label("No wallpapers in this filter");
+            this.selectionMeta.set_label("");
+            this.apply.set_sensitive(false);
+            return;
+        }
+
+        const next = this.wallpapers.includes(this.selection) ? this.selection : this.wallpapers[0];
+        this.select(next);
+    }
+
+    syncVideoPreview(path) {
+        const videoCard = this.videoCards.get(path);
+        const card = this.cards.get(path);
+        if (!videoCard || !videoCard.previewPath || !card) {
+            return;
+        }
+
+        const shouldPlay = this.activeFilter !== "image" && card.get_visible();
+        if (shouldPlay && !videoCard.stop) {
+            videoCard.stop = playCachedPreview(videoCard.picture, videoCard.previewPath, this.thumbnailCache.get(path));
+        } else if (!shouldPlay && videoCard.stop) {
+            videoCard.stop();
+            videoCard.stop = null;
+        }
+    }
+
+    centerSelection() {
+        const card = this.cards.get(this.selection);
+        if (!card) {
+            return;
+        }
+
+        // Keep the first few selections at the left edge. Once a focused tile
+        // reaches the center, the carousel itself moves beneath that focus.
+        GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            const viewportWidth = this.carouselScroller.get_allocated_width();
+            const cardWidth = card.get_allocated_width();
+
+            if (viewportWidth === 0 || cardWidth === 0) {
+                return GLib.SOURCE_REMOVE;
+            }
+
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                const adjustment = this.carouselScroller.get_hadjustment();
+                const allocation = card.get_allocation();
+                const target = allocation.x + allocation.width / 2 - viewportWidth / 2;
+                const maximum = adjustment.get_upper() - adjustment.get_page_size();
+                this.animateCarouselTo(Math.max(0, Math.min(target, maximum)));
+                return GLib.SOURCE_REMOVE;
+            });
+
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    animateCarouselTo(target) {
+        const adjustment = this.carouselScroller.get_hadjustment();
+        const start = adjustment.get_value();
+        const distance = target - start;
+
+        if (Math.abs(distance) < 1) {
+            adjustment.set_value(target);
+            return;
+        }
+
+        if (this.carouselAnimationId) {
+            GLib.Source.remove(this.carouselAnimationId);
+        }
+
+        const startedAt = GLib.get_monotonic_time();
+        const duration = 260000;
+        this.carouselAnimationId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
+            const progress = Math.min(1, (GLib.get_monotonic_time() - startedAt) / duration);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            adjustment.set_value(start + distance * eased);
+
+            if (progress >= 1) {
+                this.carouselAnimationId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    updateBackdrop(path) {
+        if (isVideo(path)) {
+            const cachedThumb = this.thumbnailCache.get(path);
+            if (cachedThumb && GLib.file_test(cachedThumb, GLib.FileTest.IS_REGULAR)) {
+                this.backdrop.set_file(Gio.File.new_for_path(cachedThumb));
+                return;
+            }
+
+            const localThumb = thumbnailCachePath(path);
+            if (GLib.file_test(localThumb, GLib.FileTest.IS_REGULAR)) {
+                this.thumbnailCache.set(path, localThumb);
+                this.backdrop.set_file(Gio.File.new_for_path(localThumb));
+                return;
+            }
+
+            loadVideoThumbnail(path, thumbPath => {
+                this.thumbnailCache.set(path, thumbPath);
+                if (this.selection === path) {
+                    this.backdrop.set_file(Gio.File.new_for_path(thumbPath));
+                }
+            });
+            return;
+        }
+
+        this.backdrop.set_file(Gio.File.new_for_path(path));
+    }
+
+    updateAccent(path) {
+        const accent = this.accentCache.get(path) || "#d4b7ff";
+        this.accentProvider.load_from_string(`
+            .wall-card.selected {
+                border-color: ${accent};
+                border-width: 4px;
+                box-shadow: 0 0 0 1px ${rgba(accent, 0.65)}, 0 10px 32px ${rgba(accent, 0.35)};
+            }
+            .scrim {
+                background-image:
+                    radial-gradient(ellipse at 22% 88%, ${rgba(accent, 0.46)}, transparent 54%),
+                    radial-gradient(ellipse at 86% 18%, ${rgba(accent, 0.28)}, transparent 48%),
+                    linear-gradient(120deg, rgba(5, 6, 8, 0.94), rgba(8, 9, 12, 0.68));
+            }
+        `);
+    }
+
+    applySelection() {
+        if (!this.selection || this.selection === this.activeWallpaper) {
+            return;
+        }
+
+        try {
+            Gio.Subprocess.new([setterPath, this.selection], Gio.SubprocessFlags.NONE);
+            this.quit();
+        } catch (error) {
+            this.selectionMeta.set_label(`Could not set wallpaper: ${error.message}`);
+        }
+    }
+});
+
+new WallpaperPicker().run([]);
