@@ -43,6 +43,15 @@ hl.bind("SUPER +SHIFT + P", hl.dsp.window.pin({ action = "toggle" }))
 
 local apps = require("apps")
 
+-- Screenshot active monitor only
+hl.bind(
+	"SUPER + CTRL + S",
+	hl.dsp.exec_cmd([[
+        monitor=$(hyprctl -j monitors | jq -r '.[] | select(.focused) | .name')
+        grim -o "$monitor" - | satty -f -
+    ]])
+)
+
 -- Floating terminal applications
 hl.bind(
 	"SUPER + SHIFT + N",
