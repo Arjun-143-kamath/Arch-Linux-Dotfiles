@@ -1,0 +1,8 @@
+[Unit]
+Description=K4 Dynamic Island Notification Server
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.Notifications
+ExecStart=%h/.local/bin/k4-notifications-server.sh
+TimeoutStartSec=30

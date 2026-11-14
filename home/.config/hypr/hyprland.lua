@@ -37,6 +37,17 @@ hl.on("monitor.added", function(monitor)
 end)
 
 hl.on("hyprland.start", function()
+	-- Export the active Hyprland session environment to systemd and D-Bus.
+	hl.exec_cmd(
+		"systemctl --user import-environment WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE QT_QPA_PLATFORM && dbus-update-activation-environment --systemd WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE XDG_CURRENT_DESKTOP XDG_SESSION_TYPE QT_QPA_PLATFORM"
+	)
+
+	-- K4 notification server
+	hl.exec_cmd("systemctl --user start k4-notifications.service")
+
+	-- Low battery monitor
+	hl.exec_cmd("~/.local/bin/low-battery-monitor.sh")
+
 	hl.exec_cmd("hypridle")
 
 	hl.exec_cmd("~/.local/bin/set_current_wall.sh")
