@@ -28,6 +28,14 @@ home/.config/walltheme/generated/
 home/.local/state/
 home/.local/share/
 
+# D-Bus notification activation
+!home/.local/share/
+home/.local/share/*
+!home/.local/share/dbus-1/
+home/.local/share/dbus-1/*
+!home/.local/share/dbus-1/services/
+home/.local/share/dbus-1/services/*
+!home/.local/share/dbus-1/services/org.freedesktop.Notifications.service
 # Wallpaper state
 .wall_state
 .wall_state.*

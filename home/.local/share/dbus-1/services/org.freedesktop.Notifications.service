@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.freedesktop.Notifications
+Exec=/usr/bin/systemctl --user start k4-notifications.service
+SystemdService=k4-notifications.service
