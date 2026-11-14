@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 set -euo pipefail
 
@@ -13,14 +13,17 @@ fi
 EXT="${WALL##*.}"
 EXT="${EXT,,}"
 
+STATE_DIR="$HOME/.local/state/walltheme"
+mkdir -p "$STATE_DIR"
+
 # Only one video renderer should own the desktop at a time.
+# Static/GIF wallpapers are handled by the persistent awww daemon.
 pkill -x mpvpaper 2>/dev/null || true
 
 # =========================================================
 # AWWW DAEMON
 # =========================================================
-
-# Walltheme owns the aww daemon. A running process is not enough;
+# Walltheme owns the awww daemon. A running process is not enough;
 # wait until the daemon is actually responding to commands.
 ensure_awww_ready() {
     if ! pgrep -x awww-daemon >/dev/null 2>&1; then
@@ -40,16 +43,14 @@ ensure_awww_ready() {
         sleep 0.1
     done
 
-    echo "Walltheme: aww daemon did not become ready." >&2
+    echo "Walltheme: awww daemon did not become ready." >&2
     return 1
 }
 
 ensure_awww_ready || exit 1
 
 case "$EXT" in
-
     mp4|webm|mkv)
-
         # =====================================================
         # PREPARE VIDEO PRESENTATION FRAME
         # =====================================================
@@ -61,36 +62,16 @@ from pathlib import Path
 import sys
 
 wallpaper = Path(sys.argv[1]).resolve()
+module_path = Path.home() / ".config" / "walltheme" / "walltheme.py"
 
-module_path = (
-    Path.home()
-    / ".config"
-    / "walltheme"
-    / "walltheme.py"
-)
-
-spec = importlib.util.spec_from_file_location(
-    "walltheme",
-    module_path,
-)
-
+spec = importlib.util.spec_from_file_location("walltheme", module_path)
 if spec is None or spec.loader is None:
-    raise SystemExit(
-        "Could not load Walltheme."
-    )
+    raise SystemExit("Could not load Walltheme.")
 
-module = importlib.util.module_from_spec(
-    spec
-)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
 
-spec.loader.exec_module(
-    module
-)
-
-first, _middle = module.prepare_video_frames(
-    wallpaper
-)
-
+first, _middle = module.prepare_video_frames(wallpaper)
 print(first)
 PY
         )"
@@ -101,7 +82,7 @@ PY
             exit 1
         fi
 
-        # Fade into the exact first frame of the video.
+        # Fade into the exact first frame of the video on all current outputs.
         awww img "$FIRST_FRAME" \
             --transition-type fade \
             --transition-fps 60 \
@@ -114,7 +95,6 @@ PY
         MONITORS=()
 
         for _ in {1..50}; do
-
             mapfile -t MONITORS < <(
                 hyprctl monitors -j 2>/dev/null |
                     python -c '
@@ -134,61 +114,49 @@ for monitor in json.load(sys.stdin):
         done
 
         if [ "${#MONITORS[@]}" -eq 0 ]; then
-            echo "No Hyprland monitors became available."
+            echo "No Hyprland monitors became available." >&2
             exit 1
         fi
 
-        # Let the transition finish before mpvpaper starts
-        # rendering from frame 0.
+        # Let the transition finish before mpvpaper starts rendering from frame 0.
         sleep 0.6
 
         # =====================================================
-        # START MPVPAPER
+        # START ONE MPVPAPER INSTANCE FOR ALL OUTPUTS
         # =====================================================
+        # mpvpaper 1.8+ supports the ALL selector. The same mpv/libmpv
+        # playback context is rendered onto every output, and mpvpaper
+        # automatically creates/removes surfaces as outputs appear/disappear.
 
-        PIDS=()
+        if ! command -v mpvpaper >/dev/null 2>&1; then
+            echo "mpvpaper is not installed." >&2
+            exit 1
+        fi
 
-        for monitor in "${MONITORS[@]}"; do
+        MPVPAPER_LOG="$STATE_DIR/mpvpaper.log"
 
-            mpvpaper \
-                -o "no-audio --loop-file=inf --no-osc --osd-level=0 --really-quiet" \
-                "$monitor" \
-                "$WALL" \
-                >/dev/null 2>&1 &
+        mpvpaper \
+            -o "no-audio --loop-file=inf --no-osc --osd-level=0 --really-quiet" \
+            ALL \
+            "$WALL" \
+            >>"$MPVPAPER_LOG" 2>&1 </dev/null &
 
-            PIDS+=("$!")
-        done
+        MPVPAPER_PID=$!
+        sleep 0.3
 
-        sleep 0.2
+        if ! kill -0 "$MPVPAPER_PID" 2>/dev/null; then
+            echo "mpvpaper failed to start. Check: $MPVPAPER_LOG" >&2
+            exit 1
+        fi
 
-        # =====================================================
-        # VERIFY MPVPAPER
-        # =====================================================
-
-        for pid in "${PIDS[@]}"; do
-
-            if ! kill -0 "$pid" 2>/dev/null; then
-
-                for started in "${PIDS[@]}"; do
-                    kill "$started" 2>/dev/null || true
-                done
-
-                echo "mpvpaper failed to start for:"
-                echo "  $WALL"
-
-                exit 1
-            fi
-        done
-
+        echo "Video wallpaper started once for all outputs: $WALL"
         ;;
 
     *)
-
+        # Static images and GIFs are rendered by the persistent awww daemon.
         awww img "$WALL" \
             --transition-type fade \
             --transition-fps 60 \
             --transition-duration 0.6
-
         ;;
-
 esac

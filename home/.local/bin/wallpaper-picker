@@ -273,17 +273,14 @@ function rgba(hex, alpha) {
 
 const css = `
 window {
-    background: #07080a;
-    color: #e8eaed;
+    background-color: #06070a;
+    color: #f0f3f8;
 }
 .backdrop {
-    opacity: 0.28;
-}
-.scrim {
-    background: linear-gradient(120deg, rgba(5, 6, 8, 0.94), rgba(8, 9, 12, 0.72));
+    opacity: 0.22;
 }
 .dashboard {
-    padding: 42px 54px;
+    padding: 44px 58px;
 }
 .title {
     font-size: 13px;
@@ -291,73 +288,183 @@ window {
     letter-spacing: 1px;
 }
 .app-heading {
-    font-size: 24px;
-    font-weight: 700;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.4px;
+    color: #ffffff;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
 }
-.nav-item {
-    color: #aeb4bb;
-    font-size: 14px;
-    background: transparent;
-    border: none;
-    box-shadow: none;
+button.nav-item {
+    background-color: rgba(255, 255, 255, 0.05);
+    background-image: none;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    color: rgba(220, 226, 238, 0.65);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    padding: 8px 22px;
+    transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 180ms ease, border-color 180ms ease, color 180ms ease, box-shadow 180ms ease;
 }
-.nav-item.active {
+button.nav-item:hover {
+    transform: translateY(-1px);
+    background-color: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.22);
+    color: #ffffff;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+button.nav-item:active {
+    transform: translateY(0px) scale(0.98);
+}
+button.nav-item.active {
+    background-color: rgba(255, 255, 255, 0.20);
+    border: 1px solid rgba(255, 255, 255, 0.55);
     color: #ffffff;
     font-weight: 700;
-    border: 1px solid #dce5f0;
-    border-radius: 999px;
-    padding: 7px 12px;
+    box-shadow: 0 0 16px rgba(255, 255, 255, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .carousel {
-    padding: 8px 2px;
+    padding: 16px 6px;
 }
 .selection-title {
-    font-size: 34px;
-    font-weight: 700;
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.6px;
+    color: #ffffff;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.6);
 }
 .selection-meta {
-    color: #b4bac2;
+    color: #9aa3b2;
     font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
 }
-.wall-card {
+button.wall-card {
+    background-color: rgba(14, 18, 24, 0.80);
+    background-image: none;
+    border: 2px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
     padding: 0;
-    border-radius: 10px;
-    border: 2px solid rgba(255, 255, 255, 0.10);
-    background: rgba(28, 32, 36, 0.86);
-    box-shadow: none;
+    transition: transform 260ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease, box-shadow 260ms ease;
 }
-.wall-card:hover, .wall-card.selected {
-    border-color: #f2f5fa;
+button.wall-card:hover {
+    transform: translateY(-2px) scale(1.02);
+    border-color: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 16px rgba(255, 255, 255, 0.12);
 }
-.wall-card.selected {
-    border-width: 4px;
+button.wall-card.selected {
+    transform: translateY(-6px) scale(1.07);
+    border-color: #ffffff;
+    border-width: 3px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(255, 255, 255, 0.3);
 }
-.wall-card.current {
-    border-color: #8de0bc;
+button.wall-card.current {
+    border-color: #5edb9e;
 }
-.wall-card.current.selected {
+button.wall-card.current.selected {
     border-color: #d4b7ff;
 }
 .video-badge, .current-badge {
-    background: rgba(15, 18, 20, 0.82);
-    color: #ffffff;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 4px 7px;
-    border-radius: 7px;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.8px;
+    padding: 4px 9px;
+    border-radius: 999px;
+}
+.video-badge {
+    background-color: rgba(12, 16, 22, 0.84);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #e4eaf2;
 }
 .current-badge {
-    background: rgba(31, 113, 75, 0.92);
+    background-color: rgba(16, 128, 76, 0.90);
+    border: 1px solid rgba(110, 240, 175, 0.35);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(16, 128, 76, 0.4);
 }
 .filename-overlay {
-    background: linear-gradient(transparent, rgba(5, 6, 8, 0.88));
-    color: #e8eaed;
-    padding: 20px 10px 8px;
+    background-image: linear-gradient(transparent, rgba(4, 6, 9, 0.92));
+    color: #f0f3f8;
+    padding: 24px 12px 10px;
     font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+}
+.action-row {
+    margin-top: 4px;
 }
 .action-row button {
     border-radius: 999px;
-    padding: 7px 16px;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+    padding: 10px 26px;
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.action-row button:hover {
+    transform: translateY(-2px);
+}
+.action-row button:active {
+    transform: translateY(0px) scale(0.97);
+}
+.action-row button:not(.suggested-action) {
+    background-color: rgba(255, 255, 255, 0.08);
+    background-image: none;
+    border: 1px solid rgba(255, 255, 255, 0.13);
+    color: #d2d7e2;
+    font-weight: 600;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.3);
+}
+.action-row button:not(.suggested-action):hover {
+    background-color: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.30);
+    color: #ffffff;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), 0 0 16px rgba(255, 255, 255, 0.12);
+}
+.action-row button.suggested-action {
+    background-color: #f2f5fa;
+    background-image: none;
+    color: #07090e;
+    font-weight: 700;
+    padding: 10px 32px;
+    border: 1px solid #ffffff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 255, 255, 0.22);
+}
+.action-row button.suggested-action:hover {
+    background-color: #ffffff;
+    color: #000000;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.6), 0 0 28px rgba(255, 255, 255, 0.45);
+}
+.action-row button.suggested-action:disabled {
+    background-color: rgba(255, 255, 255, 0.06);
+    background-image: none;
+    color: rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: none;
+}
+scrollbar,
+scrollbar trough,
+scrollbar slider {
+    min-width: 0;
+    min-height: 0;
+    opacity: 0;
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+.loading-box {
+    background-color: rgba(10, 14, 20, 0.70);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 20px;
+    padding: 24px 36px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+.loading-label {
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: #e4eaf2;
 }
 `;
 
@@ -375,6 +482,14 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         this.cards = new Map();
         this.videoCards = new Map();
         this.carouselAnimationId = 0;
+        this.gradientTimerId = 0;
+        // Start near-black so the gradient is invisible until real accents load
+        this.currentAccent = "#07080a";
+        this.lerpFromAccent = "#07080a";
+        this.lerpToAccent = "#07080a";
+        this.lerpStartTime = 0;
+        this.lerpDuration = 700000; // µs — 700ms smooth transition
+        this.gradientStartTime = GLib.get_monotonic_time();
         this.activeFilter = "all";
         this.filterButtons = new Map();
         this.accentCache = new Map();
@@ -401,6 +516,13 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
             this.accentProvider,
             Gtk.STYLE_PROVIDER_PRIORITY_USER,
         );
+        this.gradientProvider = new Gtk.CssProvider();
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            this.gradientProvider,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER + 1,
+        );
+        this.startGradientAnimation();
 
         this.window = new Gtk.ApplicationWindow({
             application: this,
@@ -409,14 +531,36 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
             default_height: 720,
         });
         this.window.set_size_request(800, 520);
+        this.window.connect("close-request", () => {
+            this.stopGradientAnimation();
+            return false;
+        });
 
         const scene = new Gtk.Overlay();
-        this.backdrop = new Gtk.Picture();
-        this.backdrop.set_content_fit(Gtk.ContentFit.COVER);
-        this.backdrop.set_hexpand(true);
-        this.backdrop.set_vexpand(true);
-        this.backdrop.add_css_class("backdrop");
-        scene.set_child(this.backdrop);
+
+        this.backdropStack = new Gtk.Stack();
+        this.backdropStack.set_transition_type(Gtk.StackTransitionType.CROSSFADE);
+        this.backdropStack.set_transition_duration(380);
+        this.backdropStack.set_hexpand(true);
+        this.backdropStack.set_vexpand(true);
+        this.backdropStack.add_css_class("backdrop");
+
+        this.backdropA = new Gtk.Picture();
+        this.backdropA.set_content_fit(Gtk.ContentFit.COVER);
+        this.backdropA.set_hexpand(true);
+        this.backdropA.set_vexpand(true);
+
+        this.backdropB = new Gtk.Picture();
+        this.backdropB.set_content_fit(Gtk.ContentFit.COVER);
+        this.backdropB.set_hexpand(true);
+        this.backdropB.set_vexpand(true);
+
+        this.backdropStack.add_named(this.backdropA, "a");
+        this.backdropStack.add_named(this.backdropB, "b");
+        this.backdropStack.set_visible_child_name("a");
+        this.currentBackdropPage = "a";
+
+        scene.set_child(this.backdropStack);
 
         const scrim = new Gtk.Box({ hexpand: true, vexpand: true });
         scrim.add_css_class("scrim");
@@ -432,7 +576,7 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         heading.add_css_class("app-heading");
         top.append(heading);
 
-        const navigation = new Gtk.Box({ spacing: 24 });
+        const navigation = new Gtk.Box({ spacing: 10 });
         for (const [filter, label] of [["all", "All"], ["image", "Image"], ["video", "Video"]]) {
             const item = new Gtk.Button({ label });
             item.add_css_class("nav-item");
@@ -447,8 +591,12 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         this.carousel.add_css_class("carousel");
         this.carouselScroller = new Gtk.ScrolledWindow({ hexpand: true, child: this.carousel });
         this.carouselScroller.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.NEVER);
-        this.carouselScroller.set_min_content_height(204);
-        root.append(this.carouselScroller);
+        this.carouselScroller.set_min_content_height(210);
+        // Prevent the ScrolledWindow from acquiring keyboard focus — its built-in
+        // arrow-key bindings run at the key-binding level (after our event
+        // controller) and would override our custom carousel animation, causing
+        // the view to jump back to position 0 while hovering over a card.
+        this.carouselScroller.set_can_focus(false);
 
         const details = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 6, hexpand: true });
         this.selectionTitle = new Gtk.Label({ label: "Select a wallpaper", xalign: 0, ellipsize: 3 });
@@ -457,9 +605,8 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         this.selectionMeta.add_css_class("selection-meta");
         details.append(this.selectionTitle);
         details.append(this.selectionMeta);
-        root.append(details);
 
-        const footer = new Gtk.Box({ spacing: 10, halign: Gtk.Align.START });
+        const footer = new Gtk.Box({ spacing: 14, halign: Gtk.Align.START });
         footer.add_css_class("action-row");
         const cancel = new Gtk.Button({ label: "Close" });
         cancel.connect("clicked", () => this.quit());
@@ -468,17 +615,50 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         this.apply.connect("clicked", () => this.applySelection());
         footer.append(this.apply);
         footer.append(cancel);
-        root.append(footer);
+
+        // Bottom section: carousel + details + footer, wrapped in a revealer for slide-up entrance
+        const bottomBox = new Gtk.Box({ orientation: Gtk.Orientation.VERTICAL, spacing: 0, vexpand: true });
+        bottomBox.append(this.carouselScroller);
+        bottomBox.append(details);
+        bottomBox.append(footer);
+
+        this.contentRevealer = new Gtk.Revealer({
+            transition_type: Gtk.RevealerTransitionType.SLIDE_UP,
+            transition_duration: 520,
+            reveal_child: false,
+            vexpand: true,
+        });
+        this.contentRevealer.set_child(bottomBox);
+
+        // Loading overlay — centered in the bottom area while accents are preloading
+        const loadingBox = new Gtk.Box({ halign: Gtk.Align.CENTER, valign: Gtk.Align.CENTER, vexpand: true });
+        loadingBox.add_css_class("loading-box");
+        this.loadingLabel = new Gtk.Label({ label: "Preparing wallpaper colors…" });
+        this.loadingLabel.add_css_class("loading-label");
+        loadingBox.append(this.loadingLabel);
+
+        // contentStack toggles between loading placeholder and real content
+        this.contentStack = new Gtk.Stack();
+        this.contentStack.set_transition_type(Gtk.StackTransitionType.CROSSFADE);
+        this.contentStack.set_transition_duration(320);
+        this.contentStack.set_vexpand(true);
+        this.contentStack.add_named(loadingBox, "loading");
+        this.contentStack.add_named(this.contentRevealer, "content");
+        this.contentStack.set_visible_child_name("loading");
+        root.append(this.contentStack);
 
         const files = wallpaperFiles(wallpaperDirectory());
         this.allWallpapers = files;
         if (files.length === 0) {
-            this.carousel.append(new Gtk.Label({ label: `No supported wallpapers found in ${wallpaperDirectory()}` }));
+            // Show an empty-state message directly in the loading label, then
+            // reveal the content area so the user sees something useful.
+            this.loadingLabel.set_label(`No supported wallpapers found in ${wallpaperDirectory()}`);
+            this.contentStack.set_visible_child_name("content");
+            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                this.contentRevealer.set_reveal_child(true);
+                return GLib.SOURCE_REMOVE;
+            });
         } else {
-            const loading = new Gtk.Label({ label: "Preparing wallpaper colors…" });
-            loading.add_css_class("selection-meta");
-            this.carousel.append(loading);
-
             preloadWallpaperAccents(files, metadata => {
                 for (const [path, data] of Object.entries(metadata)) {
                     if (!data) {
@@ -497,9 +677,15 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
                         }
                     }
                 }
-                this.carousel.remove(loading);
                 files.forEach(path => this.addCard(path));
                 this.applyFilter("all");
+
+                // Switch from loading placeholder to real content and slide up
+                this.contentStack.set_visible_child_name("content");
+                GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+                    this.contentRevealer.set_reveal_child(true);
+                    return GLib.SOURCE_REMOVE;
+                });
             });
         }
 
@@ -605,7 +791,7 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         overlay.add_overlay(label);
 
         const button = new Gtk.Button({ child: overlay, tooltip_text: path });
-        button.set_size_request(224, 126);
+        button.set_size_request(260, 146);
         button.add_css_class("wall-card");
         if (path === this.activeWallpaper) {
             button.add_css_class("current");
@@ -626,12 +812,10 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
     select(path) {
         this.selection = path;
         for (const [cardPath, card] of this.cards) {
-            card.remove_css_class("selected");
             if (cardPath === path) {
                 card.add_css_class("selected");
-                card.set_size_request(320, 180);
             } else {
-                card.set_size_request(224, 126);
+                card.remove_css_class("selected");
             }
         }
         const filename = GLib.path_get_basename(path);
@@ -649,6 +833,13 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
             return;
         }
         const current = this.wallpapers.indexOf(this.selection);
+        // Guard: if the current selection is somehow not in the active filter list,
+        // fall back to the first item rather than letting -1 arithmetic send us to
+        // position 0 or the second-to-last entry unexpectedly.
+        if (current === -1) {
+            this.select(this.wallpapers[0]);
+            return;
+        }
         const next = (current + delta + this.wallpapers.length) % this.wallpapers.length;
         this.select(this.wallpapers[next]);
     }
@@ -701,30 +892,27 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
     }
 
     centerSelection() {
-        const card = this.cards.get(this.selection);
-        if (!card) {
-            return;
-        }
-
-        // Keep the first few selections at the left edge. Once a focused tile
-        // reaches the center, the carousel itself moves beneath that focus.
+        // Re-read the selection inside the idle so we always scroll to whatever
+        // is current when the frame is actually processed, not to a stale closure.
+        // A single idle_add is enough — layout is already valid by the time it
+        // fires, so we don't need the previous double-idle pattern.
         GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-            const viewportWidth = this.carouselScroller.get_allocated_width();
-            const cardWidth = card.get_allocated_width();
-
-            if (viewportWidth === 0 || cardWidth === 0) {
+            const card = this.cards.get(this.selection);
+            if (!card) {
                 return GLib.SOURCE_REMOVE;
             }
 
-            GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
-                const adjustment = this.carouselScroller.get_hadjustment();
-                const allocation = card.get_allocation();
-                const target = allocation.x + allocation.width / 2 - viewportWidth / 2;
-                const maximum = adjustment.get_upper() - adjustment.get_page_size();
-                this.animateCarouselTo(Math.max(0, Math.min(target, maximum)));
-                return GLib.SOURCE_REMOVE;
-            });
+            const viewportWidth = this.carouselScroller.get_allocated_width();
+            const allocation = card.get_allocation();
 
+            if (viewportWidth === 0 || allocation.width === 0) {
+                return GLib.SOURCE_REMOVE;
+            }
+
+            const adjustment = this.carouselScroller.get_hadjustment();
+            const target = allocation.x + allocation.width / 2 - viewportWidth / 2;
+            const maximum = adjustment.get_upper() - adjustment.get_page_size();
+            this.animateCarouselTo(Math.max(0, Math.min(target, maximum)));
             return GLib.SOURCE_REMOVE;
         });
     }
@@ -734,72 +922,181 @@ const WallpaperPicker = GObject.registerClass(class WallpaperPicker extends Gtk.
         const start = adjustment.get_value();
         const distance = target - start;
 
-        if (Math.abs(distance) < 1) {
+        if (Math.abs(distance) < 0.5) {
             adjustment.set_value(target);
             return;
         }
 
         if (this.carouselAnimationId) {
             GLib.Source.remove(this.carouselAnimationId);
+            this.carouselAnimationId = 0;
         }
 
         const startedAt = GLib.get_monotonic_time();
-        const duration = 260000;
-        this.carouselAnimationId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 16, () => {
-            const progress = Math.min(1, (GLib.get_monotonic_time() - startedAt) / duration);
-            const eased = 1 - Math.pow(1 - progress, 3);
+        const duration = 400000;
+        this.carouselAnimationId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 12, () => {
+            const elapsed = GLib.get_monotonic_time() - startedAt;
+            const progress = Math.min(1, elapsed / duration);
+            // PS5 quartic ease-out: responsive initial launch followed by a luxurious, silky cushioned glide
+            const eased = 1 - Math.pow(1 - progress, 4);
             adjustment.set_value(start + distance * eased);
 
             if (progress >= 1) {
                 this.carouselAnimationId = 0;
+                adjustment.set_value(target);
                 return GLib.SOURCE_REMOVE;
             }
             return GLib.SOURCE_CONTINUE;
         });
     }
 
+    setBackdropImage(filePath) {
+        if (!filePath) {
+            return;
+        }
+        const nextPage = this.currentBackdropPage === "a" ? "b" : "a";
+        const nextPicture = nextPage === "b" ? this.backdropB : this.backdropA;
+        nextPicture.set_file(Gio.File.new_for_path(filePath));
+        this.backdropStack.set_visible_child_name(nextPage);
+        this.currentBackdropPage = nextPage;
+    }
+
     updateBackdrop(path) {
         if (isVideo(path)) {
             const cachedThumb = this.thumbnailCache.get(path);
             if (cachedThumb && GLib.file_test(cachedThumb, GLib.FileTest.IS_REGULAR)) {
-                this.backdrop.set_file(Gio.File.new_for_path(cachedThumb));
+                this.setBackdropImage(cachedThumb);
                 return;
             }
 
             const localThumb = thumbnailCachePath(path);
             if (GLib.file_test(localThumb, GLib.FileTest.IS_REGULAR)) {
                 this.thumbnailCache.set(path, localThumb);
-                this.backdrop.set_file(Gio.File.new_for_path(localThumb));
+                this.setBackdropImage(localThumb);
                 return;
             }
 
             loadVideoThumbnail(path, thumbPath => {
                 this.thumbnailCache.set(path, thumbPath);
                 if (this.selection === path) {
-                    this.backdrop.set_file(Gio.File.new_for_path(thumbPath));
+                    this.setBackdropImage(thumbPath);
                 }
             });
             return;
         }
 
-        this.backdrop.set_file(Gio.File.new_for_path(path));
+        this.setBackdropImage(path);
     }
 
     updateAccent(path) {
         const accent = this.accentCache.get(path) || "#d4b7ff";
+        // Start a smooth lerp from the current displayed accent to the new one
+        this.lerpFromAccent = this.currentAccent;
+        this.lerpToAccent = accent;
+        this.lerpStartTime = GLib.get_monotonic_time();
         this.accentProvider.load_from_string(`
-            .wall-card.selected {
+            button.wall-card.selected {
                 border-color: ${accent};
-                border-width: 4px;
-                box-shadow: 0 0 0 1px ${rgba(accent, 0.65)}, 0 10px 32px ${rgba(accent, 0.35)};
+                border-width: 3px;
+                box-shadow: 0 0 0 1px ${rgba(accent, 0.70)}, 0 16px 40px rgba(0, 0, 0, 0.80), 0 0 32px ${rgba(accent, 0.45)};
             }
-            .scrim {
-                background-image:
-                    radial-gradient(ellipse at 22% 88%, ${rgba(accent, 0.46)}, transparent 54%),
-                    radial-gradient(ellipse at 86% 18%, ${rgba(accent, 0.28)}, transparent 48%),
-                    linear-gradient(120deg, rgba(5, 6, 8, 0.94), rgba(8, 9, 12, 0.68));
+            .action-row button.suggested-action:not(:disabled):hover {
+                box-shadow: 0 6px 28px rgba(0, 0, 0, 0.65), 0 0 28px ${rgba(accent, 0.50)};
             }
         `);
+    }
+
+    startGradientAnimation() {
+        if (this.gradientTimerId) {
+            GLib.Source.remove(this.gradientTimerId);
+        }
+
+        const hexToRgb = hex => {
+            const v = hex.slice(1);
+            return [
+                Number.parseInt(v.slice(0, 2), 16),
+                Number.parseInt(v.slice(2, 4), 16),
+                Number.parseInt(v.slice(4, 6), 16),
+            ];
+        };
+
+        const lerpRgb = (from, to, t) => {
+            // Cubic ease-in-out for a silky smooth feel
+            const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            return [
+                Math.round(from[0] + (to[0] - from[0]) * e),
+                Math.round(from[1] + (to[1] - from[1]) * e),
+                Math.round(from[2] + (to[2] - from[2]) * e),
+            ];
+        };
+
+        const tick = () => {
+            const elapsed = (GLib.get_monotonic_time() - this.gradientStartTime) / 1000000;
+
+            // Compute the interpolated accent for a smooth cross-fade between selections
+            let accent = this.lerpToAccent || this.currentAccent || "#07080a";
+            if (this.lerpStartTime > 0) {
+                const lerpElapsed = GLib.get_monotonic_time() - this.lerpStartTime;
+                const t = Math.min(1, lerpElapsed / this.lerpDuration);
+                if (t < 1) {
+                    const from = hexToRgb(this.lerpFromAccent || "#07080a");
+                    const to = hexToRgb(this.lerpToAccent || "#07080a");
+                    const [r, g, b] = lerpRgb(from, to, t);
+                    accent = `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+                } else {
+                    accent = this.lerpToAccent;
+                    this.lerpStartTime = 0;
+                }
+            }
+
+            // Preserve the currently displayed color so a new selection
+            // continues from the in-progress transition instead of jumping.
+            this.currentAccent = accent;
+
+            // Slow, cinematic PS5 aura orbs drifting smoothly in the background
+            const x1 = (22 + 16 * Math.sin(elapsed * 0.22)).toFixed(1);
+            const y1 = (80 + 10 * Math.cos(elapsed * 0.28)).toFixed(1);
+            const r1 = (55 + 7 * Math.sin(elapsed * 0.18)).toFixed(1);
+            const a1 = (0.42 + 0.08 * Math.sin(elapsed * 0.30)).toFixed(3);
+
+            const x2 = (80 + 12 * Math.cos(elapsed * 0.19)).toFixed(1);
+            const y2 = (22 + 12 * Math.sin(elapsed * 0.25)).toFixed(1);
+            const r2 = (48 + 6 * Math.cos(elapsed * 0.22)).toFixed(1);
+            const a2 = (0.26 + 0.06 * Math.cos(elapsed * 0.26)).toFixed(3);
+
+            const x3 = (50 + 20 * Math.sin(elapsed * 0.14 + 1.5)).toFixed(1);
+            const y3 = (50 + 16 * Math.cos(elapsed * 0.17 + 0.8)).toFixed(1);
+            const r3 = (42 + 6 * Math.sin(elapsed * 0.20 + 1.0)).toFixed(1);
+            const a3 = (0.13 + 0.04 * Math.sin(elapsed * 0.35)).toFixed(3);
+
+            const angle = (120 + 16 * Math.sin(elapsed * 0.08)).toFixed(1);
+
+            this.gradientProvider.load_from_string(`
+                .scrim {
+                    background-image:
+                        radial-gradient(ellipse ${r1}% ${r1}% at ${x1}% ${y1}%, ${rgba(accent, a1)}, transparent 65%),
+                        radial-gradient(ellipse ${r2}% ${r2}% at ${x2}% ${y2}%, ${rgba(accent, a2)}, transparent 60%),
+                        radial-gradient(circle at ${x3}% ${y3}%, ${rgba(accent, a3)}, transparent 55%),
+                        linear-gradient(${angle}deg, rgba(4, 5, 8, 0.95), rgba(7, 9, 14, 0.72));
+                }
+            `);
+            return GLib.SOURCE_CONTINUE;
+        };
+
+        tick();
+        this.gradientTimerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT_IDLE, 35, tick);
+    }
+
+    stopGradientAnimation() {
+        if (this.gradientTimerId) {
+            GLib.Source.remove(this.gradientTimerId);
+            this.gradientTimerId = 0;
+        }
+    }
+
+    quit() {
+        this.stopGradientAnimation();
+        super.quit();
     }
 
     applySelection() {

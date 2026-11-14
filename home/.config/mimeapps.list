@@ -20,6 +20,13 @@ image/webp=viewnior.desktop
 image/gif=viewnior.desktop
 application/x-qemu-disk=virt-manager.desktop
 x-scheme-handler/claude=com.anthropic.Claude.desktop
+x-scheme-handler/pttp=CiscoPacketTracerPtsa-9.0.1.desktop
+application/x-pka=CiscoPacketTracer-9.0.1.desktop
+application/x-pkt=CiscoPacketTracer-9.0.1.desktop
+application/x-pkz=CiscoPacketTracer-9.0.1.desktop
+application/x-pksz=CiscoPacketTracer-9.0.1.desktop
+x-scheme-handler/codex=chatgpt.desktop
+x-scheme-handler/hydralauncher=hydralauncher.desktop
 
 [Added Associations]
 image/jpeg=viewnior.desktop;satty.desktop;
@@ -34,3 +41,6 @@ video/mp4=vlc.desktop;mpv.desktop;
 application/x-zerosize=satty.desktop;
 image/svg+xml=viewnior.desktop;
 application/x-qemu-disk=virt-manager.desktop;
+application/xml=virt-manager.desktop;
+video/matroska=vlc.desktop;
+text/plain=nvim.desktop;

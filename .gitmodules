@@ -1,0 +1,3 @@
+[submodule "home/.config/quickshell/k4"]
+	path = home/.config/quickshell/k4
+	url = https://github.com/Arjun-143-kamath/k4.git

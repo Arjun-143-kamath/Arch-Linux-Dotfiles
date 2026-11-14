@@ -61,13 +61,39 @@ deploy_dotfiles() {
   local source_root="$REPO_DIR/home"
   local backup_root="$HOME/.dotfiles-backups/$(date +%Y%m%d-%H%M%S)"
 
+  # K4 is a Git submodule. It must be deployed as one directory symlink,
+  # never as individually linked files.
+  local k4_source="$source_root/.config/quickshell/k4"
+  local k4_target="$HOME/.config/quickshell/k4"
+  local k4_ready=false
+
+  # An initialized submodule has its own .git marker and its own Git root.
+  # An uninitialized submodule may otherwise be mistaken for the parent repo.
+  if [[ -d "$k4_source" && -e "$k4_source/.git" ]]; then
+    local k4_git_root
+    k4_git_root="$(git -C "$k4_source" rev-parse --show-toplevel 2>/dev/null || true)"
+
+    local k4_real_source
+    k4_real_source="$(cd "$k4_source" && pwd -P)"
+
+    if [[ "$k4_git_root" == "$k4_real_source" ]]; then
+      k4_ready=true
+    fi
+  fi
+
+  if [[ "$k4_ready" == false ]]; then
+    warn "K4 submodule is not initialized."
+    warn "Run: git -C \"$REPO_DIR\" submodule update --init --recursive"
+    warn "Skipping K4 deployment."
+  fi
+
+  # ----------------------------------------------------
+  # Deploy ordinary files, excluding the K4 submodule.
+  # ----------------------------------------------------
+
   while IFS= read -r -d '' source; do
     local relative="${source#"$source_root"/}"
     local target="$HOME/$relative"
-
-    # ----------------------------------------------------
-    # Create target parent directory
-    # ----------------------------------------------------
 
     if [[ "$DRY_RUN" == true ]]; then
       echo "  [DRY-RUN] Would create parent: $(dirname "$target")"
@@ -75,19 +101,13 @@ deploy_dotfiles() {
       mkdir -p "$(dirname "$target")"
     fi
 
-    # ----------------------------------------------------
     # Already linked correctly
-    # ----------------------------------------------------
-
     if [[ -L "$target" ]] && [[ "$(readlink "$target")" == "$source" ]]; then
       echo "  ✓ $relative"
       continue
     fi
 
-    # ----------------------------------------------------
-    # Existing file/symlink: back it up
-    # ----------------------------------------------------
-
+    # Back up any existing file or symlink
     if [[ -e "$target" || -L "$target" ]]; then
       local backup="$backup_root/$relative"
 
@@ -95,29 +115,74 @@ deploy_dotfiles() {
         echo "  [DRY-RUN] Would backup: $relative"
       else
         mkdir -p "$(dirname "$backup")"
-
         echo "  → Backing up: $relative"
-        mv "$target" "$backup"
+        mv -- "$target" "$backup"
       fi
     fi
 
-    # ----------------------------------------------------
     # Create symlink
-    # ----------------------------------------------------
-
     if [[ "$DRY_RUN" == true ]]; then
       echo "  [DRY-RUN] Would link: $relative"
     else
-      ln -s "$source" "$target"
+      ln -s -- "$source" "$target"
       echo "  + Linked: $relative"
     fi
 
   done < <(
-    find "$source_root" -type f -print0
+    find "$source_root" \
+      \( -path "$k4_source" -o -path "$source_root/.config/kew" \) -prune \
+      -o -type f -print0
   )
 
+  # ----------------------------------------------------
+  # Deploy K4 as one directory symlink.
+  # ----------------------------------------------------
+
+  if [[ "$k4_ready" == true ]]; then
+    local k4_real_source
+    k4_real_source="$(cd "$k4_source" && pwd -P)"
+
+    if [[ "$DRY_RUN" == true ]]; then
+      echo "  [DRY-RUN] Would create parent: $(dirname "$k4_target")"
+    else
+      mkdir -p "$(dirname "$k4_target")"
+    fi
+
+    local k4_real_target=""
+    if [[ -L "$k4_target" ]]; then
+      k4_real_target="$(readlink -f -- "$k4_target" 2>/dev/null || true)"
+    fi
+
+    if [[ -L "$k4_target" && "$k4_real_target" == "$k4_real_source" ]]; then
+      echo "  ✓ .config/quickshell/k4 (submodule directory link)"
+    else
+      if [[ -e "$k4_target" || -L "$k4_target" ]]; then
+        local k4_backup="$backup_root/.config/quickshell/k4"
+
+        if [[ "$DRY_RUN" == true ]]; then
+          echo "  [DRY-RUN] Would backup existing K4 installation:"
+          echo "             $k4_target"
+          echo "          →  $k4_backup"
+        else
+          mkdir -p "$(dirname "$k4_backup")"
+          echo "  → Backing up existing K4 installation"
+          mv -- "$k4_target" "$k4_backup"
+        fi
+      fi
+
+      if [[ "$DRY_RUN" == true ]]; then
+        echo "  [DRY-RUN] Would link K4 directory:"
+        echo "             $k4_source"
+        echo "          →  $k4_target"
+      else
+        ln -s -- "$k4_source" "$k4_target"
+        echo "  + Linked K4 submodule directory"
+      fi
+    fi
+  fi
+
   echo
-  echo "Dotfiles deployed successfully."
+  echo "Dotfiles deployment completed."
 
   if [[ "$DRY_RUN" == false && -d "$backup_root" ]]; then
     echo
