@@ -61,6 +61,16 @@ deploy_dotfiles() {
   local source_root="$REPO_DIR/home"
   local backup_root="$HOME/.dotfiles-backups/$(date +%Y%m%d-%H%M%S)"
 
+  # The repository owns the actual Hyprland entrypoint.
+  # The live ~/.config/hypr/hyprland.lua path must link to this file.
+  # Refuse deployment if it becomes a symlink, because find -type f
+  # would silently skip it.
+  local hyprland_source="$source_root/.config/hypr/hyprland.lua"
+
+  if [[ -L "$hyprland_source" || ! -f "$hyprland_source" ]]; then
+    error "Expected $hyprland_source to be a regular file. Refusing to skip Hyprland configuration."
+  fi
+
   # K4 is a Git submodule. It must be deployed as one directory symlink,
   # never as individually linked files.
   local k4_source="$source_root/.config/quickshell/k4"
