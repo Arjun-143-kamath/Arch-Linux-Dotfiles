@@ -23,16 +23,6 @@ local term = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.term "
 local ssh = "quickshell ipc -p " .. raiz .. "/shell.qml call k4.ssh "
 
 ----------------------------------------------------------------------------
--- Arranque
-----------------------------------------------------------------------------
--- Se lanza `arrancar` y no `quickshell` a secas a propósito: es quien pone
--- QML_IMPORT_PATH para que los plugins puedan escribir `import K4`. Lanzando
--- quickshell directamente la barra no levanta.
-hl.on("hyprland.start", function()
-	hl.exec_cmd(raiz .. "/arrancar --no-duplicate -d")
-end)
-
-----------------------------------------------------------------------------
 -- La island
 ----------------------------------------------------------------------------
 --hl.bind(mod .. " + Space", hl.dsp.exec_cmd(k4 .. "toggleLauncher"))
